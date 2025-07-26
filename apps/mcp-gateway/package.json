@@ -13,7 +13,11 @@
     "@relayforge/mcp-adapter": "workspace:*",
     "fastify": "^4.24.0",
     "@fastify/websocket": "^10.0.0",
-    "uuid": "^9.0.0"
+    "@fastify/session": "^10.0.0",
+    "@fastify/cookie": "^9.0.0",
+    "uuid": "^9.0.0",
+    "googleapis": "^126.0.0",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "typescript": "^5.0.0",

@@ -8,8 +8,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "clean": "turbo run clean",
-    "install": "pnpm install"
+    "clean": "turbo run clean"
   },
   "packageManager": "pnpm@8.0.0",
   "devDependencies": {
