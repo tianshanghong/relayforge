@@ -1,0 +1,24 @@
+{
+  "name": "mcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@relayforge/shared": "workspace:*",
+    "@relayforge/mcp-adapter": "workspace:*",
+    "fastify": "^4.24.0",
+    "@fastify/websocket": "^10.0.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "tsx": "^4.0.0"
+  }
+}
