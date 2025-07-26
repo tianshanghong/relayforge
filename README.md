@@ -32,19 +32,16 @@ https://api.relayforge.xyz/mcp/github
 ### Development
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start development servers
-npm run dev
+pnpm dev
 ```
 
 ### Production
 ```bash
 # Build all services
-npm run build
-
-# Deploy to production
-npm run deploy
+pnpm build
 ```
 
 ## Contributing
