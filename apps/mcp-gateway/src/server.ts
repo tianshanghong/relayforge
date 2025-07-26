@@ -7,18 +7,17 @@ const fastify = Fastify({
   logger: true
 });
 
-async function setupServer() {
-  await fastify.register(import('@fastify/websocket'));
-
+// Initialize servers
 const servers = new Map<string, MCPHttpAdapter>();
-
 servers.set('hello-world', new MCPHttpAdapter(new HelloWorldMCPServer()));
 
-fastify.get('/health', async () => {
+// Health check endpoint
+fastify.get('/health', async (request, reply) => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
-fastify.get('/mcp/servers', async () => {
+// List available MCP servers
+fastify.get('/mcp/servers', async (request, reply) => {
   return {
     servers: Array.from(servers.keys()).map(name => ({
       name,
@@ -28,6 +27,7 @@ fastify.get('/mcp/servers', async () => {
   };
 });
 
+// HTTP endpoint for MCP requests
 fastify.post('/mcp/:serverId', async (request, reply) => {
   const { serverId } = request.params as { serverId: string };
   const adapter = servers.get(serverId);
@@ -61,19 +61,20 @@ fastify.post('/mcp/:serverId', async (request, reply) => {
   }
 });
 
+// WebSocket endpoint for MCP requests
 fastify.register(async function (fastify) {
   fastify.get('/mcp/:serverId/ws', { websocket: true }, (connection, req) => {
     const { serverId } = req.params as { serverId: string };
     const adapter = servers.get(serverId);
     
     if (!adapter) {
-      connection.close(1000, 'Server not found');
+      connection.socket.close(1000, 'Server not found');
       return;
     }
 
     const sessionId = uuidv4();
     
-    connection.on('message', async (message: any) => {
+    connection.socket.on('message', async (message) => {
       try {
         const response = await adapter.handleWebSocketMessage(
           sessionId,
@@ -81,10 +82,10 @@ fastify.register(async function (fastify) {
         );
         
         if (response) {
-          connection.send(JSON.stringify(response));
+          connection.socket.send(JSON.stringify(response));
         }
       } catch (error) {
-        connection.send(JSON.stringify({
+        connection.socket.send(JSON.stringify({
           jsonrpc: "2.0",
           id: null,
           error: {
@@ -96,32 +97,34 @@ fastify.register(async function (fastify) {
       }
     });
 
-    connection.on('close', () => {
+    connection.socket.on('close', () => {
       adapter.cleanupSession(sessionId);
     });
   });
 });
 
+// Cleanup expired sessions every 5 minutes
 setInterval(() => {
   for (const adapter of servers.values()) {
     adapter.cleanupExpiredSessions();
   }
 }, 5 * 60 * 1000);
 
-  const start = async () => {
-    try {
-      const port = parseInt(process.env.PORT || '3001');
-      const host = process.env.HOST || '0.0.0.0';
-      
-      await fastify.listen({ port, host });
-      console.log(`🚀 MCP Gateway listening on http://${host}:${port}`);
-    } catch (err) {
-      fastify.log.error(err);
-      process.exit(1);
-    }
-  };
+// Start the server
+const start = async () => {
+  try {
+    // Register WebSocket support
+    await fastify.register(import('@fastify/websocket'));
 
-  await start();
-}
+    const port = parseInt(process.env.PORT || '3001');
+    const host = process.env.HOST || 'localhost';
+    
+    await fastify.listen({ port, host });
+    console.log(`🚀 MCP Gateway listening on http://${host}:${port}`);
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
 
-setupServer();
+start();
