@@ -15,7 +15,7 @@ export function Hero() {
           Browse Services
         </a>
         <a
-          href="https://github.com/wwang/relayforge"
+          href="https://github.com/tianshanghong/relayforge"
           className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
           target="_blank"
           rel="noopener noreferrer"
