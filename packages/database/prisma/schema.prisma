@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  primaryEmail String   @unique
+  credits      Int      @default(500) // $5.00 in credits = 500 cents
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  linkedEmails     LinkedEmail[]
+  oauthConnections OAuthConnection[]
+  sessions         Session[]
+  usage            Usage[]
+
+  @@index([primaryEmail])
+  @@map("users")
+}
+
+model LinkedEmail {
+  id         String   @id @default(uuid())
+  userId     String
+  email      String
+  provider   String // 'google', 'github', 'slack', etc.
+  isPrimary  Boolean  @default(false)
+  verifiedAt DateTime @default(now())
+  linkedAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email])
+  @@index([email])
+  @@index([userId])
+  @@map("linked_emails")
+}
+
+model OAuthConnection {
+  id           String   @id @default(uuid())
+  userId       String
+  provider     String // 'google', 'github', 'slack'
+  email        String
+  scopes       String[] // Array of granted permissions
+  accessToken  String // Will be encrypted
+  refreshToken String? // Will be encrypted
+  expiresAt    DateTime
+  connectedAt  DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, email])
+  @@index([userId, provider])
+  @@map("oauth_connections")
+}
+
+model Session {
+  id             String   @id @default(uuid())
+  sessionId      String   @unique // The 36+ char random ID used in MCP URLs
+  userId         String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  lastAccessedAt DateTime @default(now())
+  metadata       Json? // User agent, IP address, etc.
+
+  // Relations
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage Usage[]
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Usage {
+  id        String   @id @default(uuid())
+  userId    String
+  sessionId String
+  service   String // 'google-calendar', 'openai', etc.
+  method    String? // Optional: specific method called
+  credits   Int // Cost in credits (cents)
+  success   Boolean  @default(true)
+  timestamp DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([service])
+  @@map("usage")
+}
+
+model ServicePricing {
+  id           String  @id @default(uuid())
+  service      String  @unique
+  pricePerCall Int // In credits (cents)
+  category     String // 'oauth' or 'api-key'
+  active       Boolean @default(true)
+
+  @@index([service])
+  @@map("service_pricing")
+}
