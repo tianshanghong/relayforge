@@ -1,7 +1,7 @@
 # RelayForge
 
-[![PR Validation](https://github.com/tianshanghong/relayforge-2/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/tianshanghong/relayforge-2/actions/workflows/pr-validation.yml)
-[![Performance Tests](https://github.com/tianshanghong/relayforge-2/actions/workflows/performance-tests.yml/badge.svg)](https://github.com/tianshanghong/relayforge-2/actions/workflows/performance-tests.yml)
+[![PR Validation](https://github.com/tianshanghong/relayforge/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/tianshanghong/relayforge/actions/workflows/pr-validation.yml)
+[![Performance Tests](https://github.com/tianshanghong/relayforge/actions/workflows/performance-tests.yml/badge.svg)](https://github.com/tianshanghong/relayforge/actions/workflows/performance-tests.yml)
 
 🚀 **One-stop shop for hosted remote MCP services**
 
