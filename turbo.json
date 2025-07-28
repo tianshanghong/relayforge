@@ -21,6 +21,7 @@
       "cache": false
     },
     "typecheck": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test:integration": {
