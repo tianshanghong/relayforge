@@ -24,6 +24,20 @@ jobs:
     name: Run Performance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: relayforge_perf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,8 +62,9 @@ jobs:
       - name: Run performance tests
         run: pnpm test:performance
         env:
-          NODE_ENV: production
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || 'test-encryption-key-for-ci' }}
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relayforge_perf_test
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
 
       - name: Upload performance results
         if: always()
