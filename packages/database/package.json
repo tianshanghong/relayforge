@@ -13,8 +13,10 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:performance": "vitest run --config vitest.config.performance.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",

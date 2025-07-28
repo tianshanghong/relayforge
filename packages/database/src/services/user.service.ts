@@ -20,6 +20,7 @@ export interface CreateSessionInput {
     userAgent?: string;
     ipAddress?: string;
   };
+  expiresAt?: Date;
 }
 
 export class UserService {
@@ -152,19 +153,45 @@ export class UserService {
    * Create a new session for a user
    */
   async createSession(input: CreateSessionInput): Promise<string> {
-    const { userId, metadata } = input;
+    const { userId, metadata, expiresAt } = input;
     const sessionId = crypto.generateSessionId();
     
     await prisma.session.create({
       data: {
         sessionId,
         userId,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        expiresAt: expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
         metadata,
       },
     });
 
     return sessionId;
+  }
+
+  /**
+   * Validate if a session is still active
+   */
+  async validateSession(sessionId: string): Promise<boolean> {
+    const session = await prisma.session.findUnique({
+      where: { sessionId },
+    });
+
+    if (!session) {
+      return false;
+    }
+
+    // Check if expired
+    if (session.expiresAt < new Date()) {
+      return false;
+    }
+
+    // Update last accessed time
+    await prisma.session.update({
+      where: { sessionId },
+      data: { lastAccessedAt: new Date() },
+    });
+
+    return true;
   }
 
   /**

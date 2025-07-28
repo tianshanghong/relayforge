@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,12 +13,12 @@ const servers = new Map<string, MCPHttpAdapter>();
 servers.set('hello-world', new MCPHttpAdapter(new HelloWorldMCPServer()));
 
 // Health check endpoint
-fastify.get('/health', async (request, reply) => {
+fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
 // List available MCP servers
-fastify.get('/mcp/servers', async (request, reply) => {
+fastify.get('/mcp/servers', async () => {
   return {
     servers: Array.from(servers.keys()).map(name => ({
       name,
@@ -63,18 +64,18 @@ fastify.post('/mcp/:serverId', async (request, reply) => {
 
 // WebSocket endpoint for MCP requests
 fastify.register(async function (fastify) {
-  fastify.get('/mcp/:serverId/ws', { websocket: true }, (connection, req) => {
+  fastify.get('/mcp/:serverId/ws', { websocket: true }, (socket, req) => {
     const { serverId } = req.params as { serverId: string };
     const adapter = servers.get(serverId);
     
     if (!adapter) {
-      connection.socket.close(1000, 'Server not found');
+      socket.close(1000, 'Server not found');
       return;
     }
 
     const sessionId = uuidv4();
     
-    connection.socket.on('message', async (message) => {
+    socket.on('message', async (message: Buffer) => {
       try {
         const response = await adapter.handleWebSocketMessage(
           sessionId,
@@ -82,10 +83,10 @@ fastify.register(async function (fastify) {
         );
         
         if (response) {
-          connection.socket.send(JSON.stringify(response));
+          socket.send(JSON.stringify(response));
         }
       } catch (error) {
-        connection.socket.send(JSON.stringify({
+        socket.send(JSON.stringify({
           jsonrpc: "2.0",
           id: null,
           error: {
@@ -97,7 +98,7 @@ fastify.register(async function (fastify) {
       }
     });
 
-    connection.socket.on('close', () => {
+    socket.on('close', () => {
       adapter.cleanupSession(sessionId);
     });
   });
@@ -114,7 +115,7 @@ setInterval(() => {
 const start = async () => {
   try {
     // Register WebSocket support
-    await fastify.register(import('@fastify/websocket'));
+    await fastify.register(fastifyWebsocket);
 
     const port = parseInt(process.env.PORT || '3001');
     const host = process.env.HOST || 'localhost';

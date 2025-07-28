@@ -73,13 +73,40 @@ export const testHelpers = {
 
   async seedServicePricing() {
     const services = [
-      { service: 'google-calendar', pricePerCall: 2, category: 'oauth' },
-      { service: 'openai', pricePerCall: 1, category: 'api-key' },
-      { service: 'github', pricePerCall: 1, category: 'oauth' },
+      { service: 'google-calendar', pricePerCall: 2, category: 'oauth', active: true },
+      { service: 'openai', pricePerCall: 1, category: 'api-key', active: true },
+      { service: 'github', pricePerCall: 1, category: 'oauth', active: true },
     ];
 
     for (const service of services) {
-      await prisma.servicePricing.create({ data: service });
+      await prisma.servicePricing.upsert({
+        where: { service: service.service },
+        update: { active: true },
+        create: service,
+      });
     }
   },
+
+  async cleanDatabase() {
+    // Delete in correct order to respect foreign key constraints
+    await prisma.usage.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.oAuthConnection.deleteMany();
+    await prisma.linkedEmail.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.servicePricing.deleteMany();
+  },
+
+  async cleanupExpiredSessions() {
+    const deleted = await prisma.session.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
+    return deleted.count;
+  },
+  
+  resetTestHelpers,
 };
