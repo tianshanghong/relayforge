@@ -49,6 +49,7 @@ jobs:
         run: pnpm test:performance
         env:
           NODE_ENV: production
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || 'test-encryption-key-for-ci' }}
 
       - name: Upload performance results
         if: always()
