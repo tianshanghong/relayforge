@@ -86,71 +86,98 @@ export class UsageService {
     startDate?: Date,
     endDate?: Date
   ): Promise<UsageSummary[]> {
-    const usages = await prisma.usage.groupBy({
-      by: ['service'],
-      where: {
-        userId,
-        ...(startDate && {
-          timestamp: {
-            gte: startDate,
-            ...(endDate && { lte: endDate }),
-          },
-        }),
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        credits: true,
-      },
-    });
-
-    // Get success rates and last used dates
-    const summaries: UsageSummary[] = [];
-    
-    for (const usage of usages) {
-      const serviceUsages = await prisma.usage.findMany({
-        where: {
-          userId,
-          service: usage.service,
-          ...(startDate && {
-            timestamp: {
-              gte: startDate,
-              ...(endDate && { lte: endDate }),
-            },
-          }),
-        },
-        orderBy: { timestamp: 'desc' },
-        take: 1,
-        select: {
-          timestamp: true,
-        },
-      });
-
-      const successCount = await prisma.usage.count({
-        where: {
-          userId,
-          service: usage.service,
-          success: true,
-          ...(startDate && {
-            timestamp: {
-              gte: startDate,
-              ...(endDate && { lte: endDate }),
-            },
-          }),
-        },
-      });
-
-      summaries.push({
-        service: usage.service,
-        callCount: usage._count.id,
-        totalCredits: usage._sum.credits || 0,
-        successRate: (successCount / usage._count.id) * 100,
-        lastUsed: serviceUsages[0]?.timestamp || new Date(0),
-      });
+    // Use raw SQL for efficient aggregation to avoid N+1 queries
+    if (startDate && endDate) {
+      const detailedStats = await prisma.$queryRaw<Array<{
+        service: string;
+        call_count: bigint;
+        total_credits: number;
+        success_count: bigint;
+        last_used: Date;
+      }>>`
+        SELECT 
+          service,
+          COUNT(*)::bigint as call_count,
+          COALESCE(SUM(credits), 0)::int as total_credits,
+          COUNT(CASE WHEN success = true THEN 1 END)::bigint as success_count,
+          MAX(timestamp) as last_used
+        FROM usage
+        WHERE "userId" = ${userId}
+          AND timestamp >= ${startDate}
+          AND timestamp <= ${endDate}
+        GROUP BY service
+        ORDER BY total_credits DESC
+      `;
+      
+      return detailedStats.map(stat => ({
+        service: stat.service,
+        callCount: Number(stat.call_count),
+        totalCredits: stat.total_credits,
+        successRate: Number(stat.call_count) > 0 
+          ? (Number(stat.success_count) / Number(stat.call_count)) * 100 
+          : 0,
+        lastUsed: stat.last_used,
+      }));
+    } else if (startDate) {
+      const detailedStats = await prisma.$queryRaw<Array<{
+        service: string;
+        call_count: bigint;
+        total_credits: number;
+        success_count: bigint;
+        last_used: Date;
+      }>>`
+        SELECT 
+          service,
+          COUNT(*)::bigint as call_count,
+          COALESCE(SUM(credits), 0)::int as total_credits,
+          COUNT(CASE WHEN success = true THEN 1 END)::bigint as success_count,
+          MAX(timestamp) as last_used
+        FROM usage
+        WHERE "userId" = ${userId}
+          AND timestamp >= ${startDate}
+        GROUP BY service
+        ORDER BY total_credits DESC
+      `;
+      
+      return detailedStats.map(stat => ({
+        service: stat.service,
+        callCount: Number(stat.call_count),
+        totalCredits: stat.total_credits,
+        successRate: Number(stat.call_count) > 0 
+          ? (Number(stat.success_count) / Number(stat.call_count)) * 100 
+          : 0,
+        lastUsed: stat.last_used,
+      }));
+    } else {
+      const detailedStats = await prisma.$queryRaw<Array<{
+        service: string;
+        call_count: bigint;
+        total_credits: number;
+        success_count: bigint;
+        last_used: Date;
+      }>>`
+        SELECT 
+          service,
+          COUNT(*)::bigint as call_count,
+          COALESCE(SUM(credits), 0)::int as total_credits,
+          COUNT(CASE WHEN success = true THEN 1 END)::bigint as success_count,
+          MAX(timestamp) as last_used
+        FROM usage
+        WHERE "userId" = ${userId}
+        GROUP BY service
+        ORDER BY total_credits DESC
+      `;
+      
+      return detailedStats.map(stat => ({
+        service: stat.service,
+        callCount: Number(stat.call_count),
+        totalCredits: stat.total_credits,
+        successRate: Number(stat.call_count) > 0 
+          ? (Number(stat.success_count) / Number(stat.call_count)) * 100 
+          : 0,
+        lastUsed: stat.last_used,
+      }));
     }
-
-    return summaries.sort((a, b) => b.totalCredits - a.totalCredits);
   }
 
   /**

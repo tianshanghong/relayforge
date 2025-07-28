@@ -21,6 +21,18 @@ export class CryptoService {
       throw new Error('ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
     }
     
+    // Prevent using example/weak keys in production
+    const weakKeys = [
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '1111111111111111111111111111111111111111111111111111111111111111'
+    ];
+    
+    if (process.env.NODE_ENV === 'production' && weakKeys.includes(key.toLowerCase())) {
+      throw new Error('Cannot use example or weak encryption keys in production. Please generate a secure key using: openssl rand -hex 32');
+    }
+    
     this.key = Buffer.from(key, 'hex');
   }
 
