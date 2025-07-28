@@ -19,6 +19,18 @@
     },
     "clean": {
       "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:integration": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "test:performance": {
+      "dependsOn": ["build"],
+      "outputs": ["performance-results.json", "performance-report.html"]
     }
   }
 }

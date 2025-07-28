@@ -17,17 +17,44 @@ const generateDatabaseURL = (name: string) => {
 
 // Test database name - use a fixed name since we're running sequentially
 const testDbName = `relayforge_test`;
-const testDatabaseUrl = generateDatabaseURL(testDbName);
+let testDatabaseUrl = generateDatabaseURL(testDbName);
 
 beforeAll(async () => {
   // Create test database
   try {
-    const rootUrl = new URL(process.env.DATABASE_URL!);
-    const originalDb = rootUrl.pathname.slice(1).split('?')[0];
-    rootUrl.pathname = '/postgres';
+    // In CI, we use the provided DATABASE_URL directly
+    // Locally, we create a test database
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     
-    // Create database if it doesn't exist
-    execSync(`psql "${rootUrl.toString()}" -c "CREATE DATABASE ${testDbName}" 2>/dev/null || true`);
+    if (isCI) {
+      // Use the provided DATABASE_URL
+      testDatabaseUrl = process.env.DATABASE_URL!;
+    } else {
+      // Local development - try to create database
+      if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is required for running tests');
+      }
+      
+      const rootUrl = new URL(process.env.DATABASE_URL);
+      rootUrl.pathname = '/postgres';
+      
+      try {
+        execSync(`psql "${rootUrl.toString()}" -c "CREATE DATABASE ${testDbName}" 2>/dev/null || true`);
+      } catch (e) {
+        // If psql fails, try using the test database directly
+        console.log('Note: Could not create test database, will attempt to use it directly');
+        
+        // Verify we can connect to the test database
+        try {
+          execSync(`psql "${testDatabaseUrl}" -c "SELECT 1" > /dev/null 2>&1`);
+        } catch (connectError) {
+          throw new Error(
+            `Cannot connect to test database at ${testDatabaseUrl}. ` +
+            `Please ensure PostgreSQL is running and the database exists.`
+          );
+        }
+      }
+    }
     
     // Set the test database URL
     process.env.DATABASE_URL = testDatabaseUrl;
@@ -35,10 +62,10 @@ beforeAll(async () => {
     // Push schema to test database
     execSync(`npx prisma db push --skip-generate`, {
       env: { ...process.env, DATABASE_URL: testDatabaseUrl },
-      stdio: 'ignore',
+      stdio: 'inherit', // Show output for debugging
     });
   } catch (error) {
-    console.error('Failed to create test database:', error);
+    console.error('Failed to setup test database:', error);
     throw error;
   }
 });

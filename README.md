@@ -1,5 +1,8 @@
 # RelayForge
 
+[![PR Validation](https://github.com/tianshanghong/relayforge-2/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/tianshanghong/relayforge-2/actions/workflows/pr-validation.yml)
+[![Performance Tests](https://github.com/tianshanghong/relayforge-2/actions/workflows/performance-tests.yml/badge.svg)](https://github.com/tianshanghong/relayforge-2/actions/workflows/performance-tests.yml)
+
 🚀 **One-stop shop for hosted remote MCP services**
 
 RelayForge provides remote Model Context Protocol (MCP) servers as a service, eliminating the need to manually set up, configure, and maintain MCP servers locally. Simply connect your AI agents (Claude Code, Cursor) to our hosted services with a single URL.
