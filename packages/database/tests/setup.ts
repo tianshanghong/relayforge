@@ -31,14 +31,28 @@ beforeAll(async () => {
       testDatabaseUrl = process.env.DATABASE_URL!;
     } else {
       // Local development - try to create database
-      const rootUrl = new URL(process.env.DATABASE_URL!);
+      if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is required for running tests');
+      }
+      
+      const rootUrl = new URL(process.env.DATABASE_URL);
       rootUrl.pathname = '/postgres';
       
       try {
         execSync(`psql "${rootUrl.toString()}" -c "CREATE DATABASE ${testDbName}" 2>/dev/null || true`);
       } catch (e) {
-        // If psql fails, assume database exists or we're in a limited environment
-        console.log('Note: Could not create test database, assuming it exists');
+        // If psql fails, try using the test database directly
+        console.log('Note: Could not create test database, will attempt to use it directly');
+        
+        // Verify we can connect to the test database
+        try {
+          execSync(`psql "${testDatabaseUrl}" -c "SELECT 1" > /dev/null 2>&1`);
+        } catch (connectError) {
+          throw new Error(
+            `Cannot connect to test database at ${testDatabaseUrl}. ` +
+            `Please ensure PostgreSQL is running and the database exists.`
+          );
+        }
       }
     }
     

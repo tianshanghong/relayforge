@@ -56,8 +56,10 @@ jobs:
         with:
           name: performance-results-${{ github.run_id }}
           path: |
-            **/performance-results.json
-            **/performance-report.html
+            packages/*/performance-results.json
+            packages/*/performance-report.html
+            apps/*/performance-results.json
+            apps/*/performance-report.html
           retention-days: 30
 
       - name: Comment performance results on PR
@@ -67,29 +69,40 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
+            const glob = require('glob');
             
-            // Find performance results
-            const resultsPath = './performance-results.json';
-            if (fs.existsSync(resultsPath)) {
-              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-              
-              const comment = `## Performance Test Results
-              
-              ${results.summary || 'Performance tests completed'}
-              
-              <details>
-              <summary>Detailed Results</summary>
-              
-              \`\`\`json
-              ${JSON.stringify(results, null, 2)}
-              \`\`\`
-              
-              </details>`;
-              
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
+            // Find all performance results in packages
+            const resultFiles = glob.sync('packages/*/performance-results.json');
+            
+            if (resultFiles.length === 0) {
+              console.log('No performance results found');
+              return;
             }
+            
+            // Aggregate results from all packages
+            const allResults = {};
+            for (const file of resultFiles) {
+              const packageName = path.dirname(file).split('/').pop();
+              const results = JSON.parse(fs.readFileSync(file, 'utf8'));
+              allResults[packageName] = results;
+            }
+            
+            const comment = `## Performance Test Results
+            
+            Found results for ${resultFiles.length} package(s)
+            
+            <details>
+            <summary>Detailed Results</summary>
+            
+            \`\`\`json
+            ${JSON.stringify(allResults, null, 2)}
+            \`\`\`
+            
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
