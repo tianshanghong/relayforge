@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -14,6 +18,7 @@ jobs:
   install:
     name: Install Dependencies
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,14 +42,15 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
   lint:
     name: Lint
     needs: install
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -65,9 +71,9 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -79,6 +85,7 @@ jobs:
     name: Type Check
     needs: install
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -99,9 +106,9 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -113,6 +120,7 @@ jobs:
     name: Unit Tests
     needs: install
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -147,9 +155,9 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -164,6 +172,7 @@ jobs:
     name: Integration Tests
     needs: install
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -198,9 +207,9 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -215,6 +224,7 @@ jobs:
     name: Build
     needs: install
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -235,9 +245,9 @@ jobs:
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ github.job }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-${{ github.job }}-node-modules-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -257,6 +267,7 @@ jobs:
     name: Check Affected Packages
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
