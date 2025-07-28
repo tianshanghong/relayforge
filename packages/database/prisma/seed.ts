@@ -9,25 +9,25 @@ async function main() {
 
   // Seed service pricing
   const services = [
-    // OAuth services (we pay for API + compute)
-    { service: 'google-calendar', pricePerCall: 2, category: 'oauth' },
-    { service: 'google-drive', pricePerCall: 3, category: 'oauth' },
-    { service: 'google-gmail', pricePerCall: 2, category: 'oauth' },
-    { service: 'github', pricePerCall: 1, category: 'oauth' },
-    { service: 'slack', pricePerCall: 2, category: 'oauth' },
-    { service: 'microsoft-graph', pricePerCall: 2, category: 'oauth' },
-    { service: 'notion', pricePerCall: 3, category: 'oauth' },
-    { service: 'linear', pricePerCall: 2, category: 'oauth' },
+    // OAuth services
+    { service: 'google-calendar', pricePerCall: 2, category: 'oauth', active: true }, // MVP
+    { service: 'google-drive', pricePerCall: 3, category: 'oauth', active: false },
+    { service: 'google-gmail', pricePerCall: 2, category: 'oauth', active: false },
+    { service: 'github', pricePerCall: 1, category: 'oauth', active: false },
+    { service: 'slack', pricePerCall: 2, category: 'oauth', active: false },
+    { service: 'microsoft-graph', pricePerCall: 2, category: 'oauth', active: false },
+    { service: 'notion', pricePerCall: 3, category: 'oauth', active: false },
+    { service: 'linear', pricePerCall: 2, category: 'oauth', active: false },
     
-    // Client-key services (compute only)
-    { service: 'openai', pricePerCall: 0.5, category: 'api-key' },
-    { service: 'anthropic', pricePerCall: 0.5, category: 'api-key' },
-    { service: 'stripe', pricePerCall: 1, category: 'api-key' },
-    { service: 'sendgrid', pricePerCall: 0.5, category: 'api-key' },
-    { service: 'twilio', pricePerCall: 1, category: 'api-key' },
-    { service: 'sentry', pricePerCall: 0.5, category: 'api-key' },
-    { service: 'datadog', pricePerCall: 1, category: 'api-key' },
-    { service: 'pagerduty', pricePerCall: 1, category: 'api-key' },
+    // Client-key services
+    { service: 'openai', pricePerCall: 0.5, category: 'api-key', active: false },
+    { service: 'anthropic', pricePerCall: 0.5, category: 'api-key', active: false },
+    { service: 'stripe', pricePerCall: 1, category: 'api-key', active: false },
+    { service: 'sendgrid', pricePerCall: 0.5, category: 'api-key', active: false },
+    { service: 'twilio', pricePerCall: 1, category: 'api-key', active: false },
+    { service: 'sentry', pricePerCall: 0.5, category: 'api-key', active: false },
+    { service: 'datadog', pricePerCall: 1, category: 'api-key', active: false },
+    { service: 'pagerduty', pricePerCall: 1, category: 'api-key', active: false },
   ];
 
   for (const service of services) {
@@ -36,13 +36,13 @@ async function main() {
       update: {
         pricePerCall: service.pricePerCall,
         category: service.category,
-        active: true,
+        active: service.active,
       },
       create: {
         service: service.service,
         pricePerCall: service.pricePerCall,
         category: service.category,
-        active: true,
+        active: service.active,
       },
     });
   }

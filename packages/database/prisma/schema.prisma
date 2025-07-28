@@ -96,7 +96,7 @@ model Usage {
 
   // Relations
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
 
   @@index([userId, timestamp])
   @@index([service])
