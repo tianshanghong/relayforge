@@ -185,11 +185,17 @@ export class UserService {
       return false;
     }
 
-    // Update last accessed time
-    await prisma.session.update({
-      where: { sessionId },
-      data: { lastAccessedAt: new Date() },
-    });
+    // Only update last accessed time if it's been more than 1 hour
+    const ONE_HOUR = 60 * 60 * 1000;
+    const lastAccessed = session.lastAccessedAt?.getTime() || 0;
+    const now = Date.now();
+    
+    if (now - lastAccessed > ONE_HOUR) {
+      await prisma.session.update({
+        where: { sessionId },
+        data: { lastAccessedAt: new Date() },
+      });
+    }
 
     return true;
   }

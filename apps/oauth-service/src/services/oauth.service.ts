@@ -1,16 +1,15 @@
-import { OAuthService as DatabaseOAuthService, UserService } from '@relayforge/database';
+import { OAuthService as DatabaseOAuthService, prisma, crypto } from '@relayforge/database';
 import { providerRegistry } from '../providers/registry';
 import { CSRFManager } from '../utils/csrf';
 import { SessionManager } from '../utils/session';
 import { OAuthError } from '../utils/errors';
+import { tokenRefreshLock } from '../utils/token-lock';
 
 export class OAuthFlowService {
   private dbOAuthService: DatabaseOAuthService;
-  private userService: UserService;
 
   constructor() {
     this.dbOAuthService = new DatabaseOAuthService();
-    this.userService = new UserService();
   }
 
   /**
@@ -84,41 +83,48 @@ export class OAuthFlowService {
     // Exchange code for tokens
     const tokens = await oauthProvider.exchangeCode(code);
 
-    // Validate scopes
-    if (tokens.scope && !oauthProvider.validateScopes(tokens.scope)) {
+    // Validate scopes - make validation mandatory
+    const receivedScopes = tokens.scope || '';
+    if (!oauthProvider.validateScopes(receivedScopes)) {
       throw OAuthError.insufficientScope(provider, oauthProvider.scopes);
     }
 
     // Get user info
     const userInfo = await oauthProvider.getUserInfo(tokens.accessToken);
 
-    // Find or create user
-    const { user, isNewUser } = await this.findOrCreateUser(
-      userInfo.email,
-      provider
-    );
+    // Use transaction to ensure atomicity of user creation and OAuth token storage
+    const result = await prisma.$transaction(async (tx) => {
+      // Find or create user within transaction
+      const { user, isNewUser } = await this.findOrCreateUserInTransaction(
+        userInfo.email,
+        provider,
+        tx
+      );
 
-    // Store OAuth tokens
-    await this.dbOAuthService.storeTokens({
-      userId: user.id,
-      provider,
-      email: userInfo.email,
-      scopes: tokens.scope?.split(' ') || oauthProvider.scopes,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      expiresAt: this.calculateExpiryDate(tokens.expiresIn),
+      // Store OAuth tokens within same transaction
+      await this.storeTokensInTransaction({
+        userId: user.id,
+        provider,
+        email: userInfo.email,
+        scopes: (receivedScopes || tokens.scope)?.split(' ') || oauthProvider.scopes,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken || null,
+        expiresAt: this.calculateExpiryDate(tokens.expiresIn),
+      }, tx);
+
+      return { user, isNewUser };
     });
 
-    // Create session
-    const { sessionUrl } = await SessionManager.createSession(user.id);
+    // Create session (outside transaction as it's independent)
+    const { sessionUrl } = await SessionManager.createSession(result.user.id);
 
     return {
       sessionUrl,
       user: {
-        id: user.id,
-        email: user.primaryEmail,
-        credits: user.credits,
-        isNewUser,
+        id: result.user.id,
+        email: result.user.primaryEmail,
+        credits: result.user.credits,
+        isNewUser: result.isNewUser,
       },
     };
   }
@@ -134,21 +140,46 @@ export class OAuthFlowService {
 
     // Check if token is expired
     if (tokens.expiresAt && tokens.expiresAt < new Date()) {
-      // Refresh token
-      if (!tokens.refreshToken) {
-        throw OAuthError.invalidGrant(provider);
+      // Check if a refresh is already in progress for this user-provider combination
+      const existingRefresh = tokenRefreshLock.getRefreshPromise(userId, provider);
+      if (existingRefresh) {
+        // Wait for the existing refresh to complete
+        return existingRefresh;
       }
 
-      const oauthProvider = providerRegistry.get(provider);
-      if (!oauthProvider) {
-        throw new Error(`Unknown OAuth provider: ${provider}`);
-      }
+      // No refresh in progress, start a new one
+      const refreshPromise = this.performTokenRefresh(userId, provider, tokens.refreshToken || null);
+      tokenRefreshLock.setRefreshPromise(userId, provider, refreshPromise);
+      
+      return refreshPromise;
+    }
 
-      const newTokens = await oauthProvider.refreshToken(tokens.refreshToken);
+    return tokens.accessToken;
+  }
+
+  /**
+   * Perform token refresh with proper error handling
+   */
+  private async performTokenRefresh(
+    userId: string,
+    provider: string,
+    refreshToken: string | null
+  ): Promise<string> {
+    if (!refreshToken) {
+      throw OAuthError.invalidGrant(provider);
+    }
+
+    const oauthProvider = providerRegistry.get(provider);
+    if (!oauthProvider) {
+      throw new Error(`Unknown OAuth provider: ${provider}`);
+    }
+
+    try {
+      const newTokens = await oauthProvider.refreshToken(refreshToken);
 
       // Find the connection to update
-      const connection = await this.dbOAuthService.getUserConnections(userId);
-      const conn = connection.find(c => c.provider === provider);
+      const connections = await this.dbOAuthService.getUserConnections(userId);
+      const conn = connections.find(c => c.provider === provider);
       
       if (!conn) {
         throw new Error('OAuth connection not found');
@@ -163,43 +194,12 @@ export class OAuthFlowService {
       );
 
       return newTokens.accessToken;
+    } catch (error) {
+      // Re-throw the error so the lock manager can clean up properly
+      throw error;
     }
-
-    return tokens.accessToken;
   }
 
-  /**
-   * Private helper methods
-   */
-  private async findOrCreateUser(email: string, provider: string) {
-    // Check if user exists with this email
-    const existingUser = await this.userService.findUserByEmail(email);
-
-    if (existingUser) {
-      // User exists - check if it's a new OAuth connection
-      const connections = await this.dbOAuthService.getUserConnections(
-        existingUser.id
-      );
-      const hasThisConnection = connections.some(
-        (c) => c.provider === provider && c.email === email
-      );
-
-      return {
-        user: existingUser,
-        isNewUser: false,
-        isNewConnection: !hasThisConnection,
-      };
-    }
-
-    // Create new user with $5 free credits
-    const newUser = await this.userService.createUser({ email, provider, initialCredits: 500 });
-
-    return {
-      user: newUser,
-      isNewUser: true,
-      isNewConnection: true,
-    };
-  }
 
   private calculateExpiryDate(expiresIn?: number): Date {
     if (!expiresIn) {
@@ -210,6 +210,126 @@ export class OAuthFlowService {
     const expiryDate = new Date();
     expiryDate.setSeconds(expiryDate.getSeconds() + expiresIn);
     return expiryDate;
+  }
+
+  /**
+   * Transaction-aware version of findOrCreateUser
+   */
+  private async findOrCreateUserInTransaction(
+    email: string,
+    provider: string,
+    tx: any
+  ) {
+    // Check if user exists with this email
+    const existingUser = await tx.user.findFirst({
+      where: {
+        linkedEmails: {
+          some: {
+            email: email.toLowerCase(),
+          },
+        },
+      },
+      include: {
+        linkedEmails: true,
+      },
+    });
+
+    if (existingUser) {
+      // User exists - check if it's a new OAuth connection
+      const connections = await tx.oAuthConnection.findMany({
+        where: { userId: existingUser.id },
+      });
+      const hasThisConnection = connections.some(
+        (c: any) => c.provider === provider && c.email === email
+      );
+
+      return {
+        user: existingUser,
+        isNewUser: false,
+        isNewConnection: !hasThisConnection,
+      };
+    }
+
+    // Create new user with $5 free credits within transaction
+    const newUser = await tx.user.create({
+      data: {
+        primaryEmail: email,
+        credits: 500, // $5.00 in cents
+        linkedEmails: {
+          create: {
+            email: email.toLowerCase(),
+            provider,
+            isPrimary: true,
+            verifiedAt: new Date(),
+          },
+        },
+      },
+      include: {
+        linkedEmails: true,
+      },
+    });
+
+    return {
+      user: newUser,
+      isNewUser: true,
+      isNewConnection: true,
+    };
+  }
+
+  /**
+   * Transaction-aware version of storeTokens
+   */
+  private async storeTokensInTransaction(
+    data: {
+      userId: string;
+      provider: string;
+      email: string;
+      scopes: string[];
+      accessToken: string;
+      refreshToken: string | null;
+      expiresAt: Date;
+    },
+    tx: any
+  ) {
+    // Check if connection already exists
+    const existing = await tx.oAuthConnection.findFirst({
+      where: {
+        userId: data.userId,
+        provider: data.provider,
+        email: data.email,
+      },
+    });
+
+    if (existing) {
+      // Update existing connection
+      await tx.oAuthConnection.update({
+        where: { id: existing.id },
+        data: {
+          scopes: data.scopes,
+          encryptedAccessToken: await crypto.encrypt(data.accessToken),
+          encryptedRefreshToken: data.refreshToken
+            ? await crypto.encrypt(data.refreshToken)
+            : null,
+          tokenExpiresAt: data.expiresAt,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new connection
+      await tx.oAuthConnection.create({
+        data: {
+          userId: data.userId,
+          provider: data.provider,
+          email: data.email,
+          scopes: data.scopes,
+          encryptedAccessToken: await crypto.encrypt(data.accessToken),
+          encryptedRefreshToken: data.refreshToken
+            ? await crypto.encrypt(data.refreshToken)
+            : null,
+          tokenExpiresAt: data.expiresAt,
+        },
+      });
+    }
   }
 }
 

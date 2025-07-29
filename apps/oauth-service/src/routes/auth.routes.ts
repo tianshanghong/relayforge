@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { oauthFlowService } from '../services/oauth.service';
 import { providerRegistry } from '../providers/registry';
 import { config } from '../config';
+import { OAuthError } from '../utils/errors';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -125,7 +126,14 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       redirectUrl.searchParams.set('is_new_user', result.user.isNewUser.toString());
 
       // Set secure session cookie
-      reply.setCookie('rf_session', result.sessionUrl.split('/').pop()!, {
+      const sessionUrl = new URL(result.sessionUrl);
+      const sessionId = sessionUrl.pathname.split('/').pop();
+      
+      if (!sessionId) {
+        throw new OAuthError('INVALID_SESSION_URL', 'Invalid session URL format');
+      }
+      
+      reply.setCookie('rf_session', sessionId, {
         httpOnly: true,
         secure: config.NODE_ENV === 'production',
         sameSite: 'lax',
