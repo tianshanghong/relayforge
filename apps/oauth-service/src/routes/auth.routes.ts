@@ -1,20 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import { z } from 'zod';
 import { oauthFlowService } from '../services/oauth.service';
 import { providerRegistry } from '../providers/registry';
 import { config } from '../config';
-
-// Request/Response schemas
-const AuthorizeQuerySchema = z.object({
-  redirect_url: z.string().url().optional(),
-});
-
-const CallbackQuerySchema = z.object({
-  code: z.string().optional(),
-  state: z.string(),
-  error: z.string().optional(),
-  error_description: z.string().optional(),
-});
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -23,7 +10,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get<{
     Params: { provider: string };
-    Querystring: z.infer<typeof AuthorizeQuerySchema>;
+    Querystring: { redirect_url?: string };
   }>('/:provider/authorize', {
     schema: {
       params: {
@@ -33,7 +20,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         },
         required: ['provider'],
       },
-      querystring: AuthorizeQuerySchema,
+      querystring: {
+        type: 'object',
+        properties: {
+          redirect_url: { type: 'string', format: 'uri' },
+        },
+      },
       response: {
         302: {
           type: 'null',
@@ -78,7 +70,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get<{
     Params: { provider: string };
-    Querystring: z.infer<typeof CallbackQuerySchema>;
+    Querystring: { code?: string; state: string; error?: string; error_description?: string };
   }>('/:provider/callback', {
     schema: {
       params: {
@@ -88,7 +80,16 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         },
         required: ['provider'],
       },
-      querystring: CallbackQuerySchema,
+      querystring: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          state: { type: 'string' },
+          error: { type: 'string' },
+          error_description: { type: 'string' },
+        },
+        required: ['state'],
+      },
       response: {
         302: {
           type: 'null',
