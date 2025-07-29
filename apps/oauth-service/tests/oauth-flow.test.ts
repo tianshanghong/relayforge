@@ -1,3 +1,6 @@
+// Set environment variables before any imports
+process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
@@ -27,6 +30,7 @@ vi.mock('../src/config', () => ({
     PORT: 3001,
   },
 }));
+
 
 async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -146,6 +150,7 @@ describe('OAuth Flow Integration Tests', () => {
       refreshToken: 'mock-refresh-token',
       expiresIn: 3600,
       scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
+      tokenType: 'Bearer',
     };
 
     const mockUserInfo = {
@@ -157,6 +162,15 @@ describe('OAuth Flow Integration Tests', () => {
       // Mock provider methods
       vi.spyOn(googleProvider, 'exchangeCode').mockResolvedValue(mockTokens);
       vi.spyOn(googleProvider, 'getUserInfo').mockResolvedValue(mockUserInfo);
+      vi.spyOn(googleProvider, 'validateScopes').mockImplementation((scopes: string) => {
+        // Only return true if both required scopes are present
+        const requiredScopes = [
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/calendar',
+        ];
+        const grantedScopes = scopes.split(' ');
+        return requiredScopes.every(scope => grantedScopes.includes(scope));
+      });
     });
 
     it('should handle successful OAuth callback for new user', async () => {
@@ -175,6 +189,9 @@ describe('OAuth Flow Integration Tests', () => {
       // Check cookie was set
       const cookies = response.headers['set-cookie'] as string;
       expect(cookies).toContain('rf_session=');
+      
+      // Add small delay to ensure transaction completes
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify user was created with free credits
       const user = await prisma.user.findFirst({
@@ -210,7 +227,7 @@ describe('OAuth Flow Integration Tests', () => {
           credits: 100,
           linkedEmails: {
             create: {
-              email: 'test@gmail.com',
+              email: 'test@gmail.com'.toLowerCase(),
               provider: 'manual',
               isPrimary: true,
             },
@@ -226,6 +243,9 @@ describe('OAuth Flow Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(302);
+      
+      // Add small delay to ensure transaction completes
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify user wasn't duplicated
       const users = await prisma.user.findMany();
