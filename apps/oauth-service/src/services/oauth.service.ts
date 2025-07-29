@@ -174,30 +174,25 @@ export class OAuthFlowService {
       throw new Error(`Unknown OAuth provider: ${provider}`);
     }
 
-    try {
-      const newTokens = await oauthProvider.refreshToken(refreshToken);
+    const newTokens = await oauthProvider.refreshToken(refreshToken);
 
-      // Find the connection to update
-      const connections = await this.dbOAuthService.getUserConnections(userId);
-      const conn = connections.find(c => c.provider === provider);
-      
-      if (!conn) {
-        throw new Error('OAuth connection not found');
-      }
-
-      // Update tokens
-      await this.dbOAuthService.updateTokens(
-        conn.id,
-        newTokens.accessToken,
-        newTokens.refreshToken,
-        this.calculateExpiryDate(newTokens.expiresIn)
-      );
-
-      return newTokens.accessToken;
-    } catch (error) {
-      // Re-throw the error so the lock manager can clean up properly
-      throw error;
+    // Find the connection to update
+    const connections = await this.dbOAuthService.getUserConnections(userId);
+    const conn = connections.find(c => c.provider === provider);
+    
+    if (!conn) {
+      throw new Error('OAuth connection not found');
     }
+
+    // Update tokens
+    await this.dbOAuthService.updateTokens(
+      conn.id,
+      newTokens.accessToken,
+      newTokens.refreshToken,
+      this.calculateExpiryDate(newTokens.expiresIn)
+    );
+
+    return newTokens.accessToken;
   }
 
 

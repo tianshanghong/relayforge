@@ -11,6 +11,9 @@ import { tokenRefreshLock } from '../src/utils/token-lock';
 import { errorHandler } from '../src/middleware/error-handler';
 import type { GoogleProvider } from '../src/providers/google.provider';
 
+// Set ENCRYPTION_KEY for the database crypto module
+process.env.ENCRYPTION_KEY = 'test-encryption-key-32-chars-long';
+
 // Mock environment
 vi.mock('../src/config', () => ({
   config: {
