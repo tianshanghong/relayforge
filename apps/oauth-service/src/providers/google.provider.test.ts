@@ -1,4 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock the config module before importing GoogleOAuthProvider
+vi.mock('../config', () => ({
+  config: {
+    GOOGLE_CLIENT_ID: 'test-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-client-secret',
+    OAUTH_REDIRECT_BASE_URL: 'http://localhost:3002',
+    COOKIE_SECRET: 'test-cookie-secret',
+    JWT_SECRET: 'test-jwt-secret'
+  }
+}));
+
 import { GoogleOAuthProvider } from './google.provider';
 
 describe('GoogleOAuthProvider', () => {
