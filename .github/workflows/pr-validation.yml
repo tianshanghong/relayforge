@@ -175,6 +175,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           NODE_ENV: test
+          ENCRYPTION_KEY: test-encryption-key-for-ci-32chars
 
       - name: Upload test results
         if: failure()
@@ -237,6 +238,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relayforge_test
           NODE_ENV: test
+          ENCRYPTION_KEY: test-encryption-key-for-ci-32chars
 
   build:
     name: Build
