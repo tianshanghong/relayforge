@@ -306,12 +306,12 @@ export class OAuthFlowService {
         where: { id: existing.id },
         data: {
           scopes: data.scopes,
-          encryptedAccessToken: await crypto.encrypt(data.accessToken),
-          encryptedRefreshToken: data.refreshToken
+          accessToken: await crypto.encrypt(data.accessToken),
+          refreshToken: data.refreshToken
             ? await crypto.encrypt(data.refreshToken)
             : null,
-          tokenExpiresAt: data.expiresAt,
-          updatedAt: new Date(),
+          expiresAt: data.expiresAt,
+          lastUsedAt: new Date(),
         },
       });
     } else {
@@ -322,11 +322,11 @@ export class OAuthFlowService {
           provider: data.provider,
           email: data.email,
           scopes: data.scopes,
-          encryptedAccessToken: await crypto.encrypt(data.accessToken),
-          encryptedRefreshToken: data.refreshToken
+          accessToken: await crypto.encrypt(data.accessToken),
+          refreshToken: data.refreshToken
             ? await crypto.encrypt(data.refreshToken)
             : null,
-          tokenExpiresAt: data.expiresAt,
+          expiresAt: data.expiresAt,
         },
       });
     }
