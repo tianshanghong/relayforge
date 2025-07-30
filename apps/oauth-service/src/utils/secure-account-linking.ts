@@ -1,5 +1,7 @@
 import { prisma } from '@relayforge/database';
+import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import { TokenSet } from '../providers/base.provider';
 
 export interface PendingLinkSession {
   id: string;
@@ -23,7 +25,7 @@ export class SecureAccountLinking {
   static async checkExistingAccount(
     email: string,
     provider: string,
-    tx: any
+    tx: Prisma.TransactionClient
   ): Promise<LinkingDecision> {
     const normalizedEmail = email.toLowerCase().trim();
     
@@ -44,7 +46,7 @@ export class SecureAccountLinking {
     if (existingUser) {
       // Check if this provider is already connected
       const hasProvider = existingUser.oauthConnections.some(
-        (conn: any) => conn.provider === provider && conn.email === normalizedEmail
+        (conn) => conn.provider === provider && conn.email === normalizedEmail
       );
 
       if (hasProvider) {
@@ -70,12 +72,7 @@ export class SecureAccountLinking {
   static async createPendingSession(
     _email: string,
     _provider: string,
-    _tokens: {
-      accessToken: string;
-      refreshToken?: string;
-      expiresAt: Date;
-      scopes: string[];
-    }
+    _tokens: TokenSet
   ): Promise<string> {
     const sessionId = crypto.randomBytes(32).toString('base64url');
     
@@ -97,7 +94,7 @@ export class SecureAccountLinking {
   static async linkVerifiedAccounts(
     _primaryUserId: string,
     _pendingSessionId: string,
-    _tx: any
+    _tx: Prisma.TransactionClient
   ): Promise<void> {
     // TODO: Retrieve pending session from storage
     // const pendingSession = await getPendingSession(_pendingSessionId);
@@ -123,7 +120,7 @@ export class SecureAccountLinking {
   static async mergeVerifiedAccounts(
     keepAccountId: string,
     mergeAccountId: string,
-    tx: any
+    tx: Prisma.TransactionClient
   ): Promise<void> {
     // Move all OAuth connections
     await tx.oAuthConnection.updateMany({
@@ -191,7 +188,7 @@ export class SecureAccountLinking {
 export async function handleOAuthCallbackSecurely(
   provider: string,
   email: string,
-  tokens: any
+  tokens: TokenSet
 ) {
   return await prisma.$transaction(async (tx) => {
     const decision = await SecureAccountLinking.checkExistingAccount(
@@ -210,7 +207,7 @@ export async function handleOAuthCallbackSecurely(
           message: `${provider} has been added to your account`,
         };
 
-      case 'pending_user_choice':
+      case 'pending_user_choice': {
         // New email - create pending session
         const sessionId = await SecureAccountLinking.createPendingSession(
           email,
@@ -223,6 +220,7 @@ export async function handleOAuthCallbackSecurely(
           pendingSessionId: sessionId,
           message: 'Choose to create new account or link to existing',
         };
+      }
         
       default:
         throw new Error('Unknown decision action');

@@ -49,19 +49,10 @@ export class GoogleOAuthProvider implements OAuthProvider {
 
   async exchangeCode(code: string, codeVerifier?: string): Promise<TokenSet> {
     try {
-      const params: any = {
+      const { tokens } = await this.client.getToken({
         code,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        redirect_uri: this.redirectUri,
-        grant_type: 'authorization_code',
-      };
-
-      if (codeVerifier) {
-        params.code_verifier = codeVerifier;
-      }
-
-      const { tokens } = await this.client.getToken(params);
+        codeVerifier
+      });
 
       if (!tokens.access_token) {
         throw OAuthError.invalidGrant(this.name);
@@ -76,11 +67,14 @@ export class GoogleOAuthProvider implements OAuthProvider {
         tokenType: tokens.token_type || 'Bearer',
         scope: tokens.scope,
       };
-    } catch (error: any) {
-      if (error.response?.data?.error === 'invalid_grant') {
-        throw OAuthError.invalidGrant(this.name);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if ('response' in error && (error as {response?: {data?: {error?: string}}}).response?.data?.error === 'invalid_grant') {
+          throw OAuthError.invalidGrant(this.name);
+        }
+        throw OAuthError.providerError(this.name, error.message);
       }
-      throw OAuthError.providerError(this.name, error.message);
+      throw OAuthError.providerError(this.name, 'Unknown error occurred');
     }
   }
 
@@ -102,11 +96,14 @@ export class GoogleOAuthProvider implements OAuthProvider {
         tokenType: credentials.token_type || 'Bearer',
         scope: credentials.scope,
       };
-    } catch (error: any) {
-      if (error.message?.includes('invalid_grant')) {
-        throw OAuthError.invalidGrant(this.name);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message?.includes('invalid_grant')) {
+          throw OAuthError.invalidGrant(this.name);
+        }
+        throw OAuthError.providerError(this.name, error.message);
       }
-      throw OAuthError.providerError(this.name, error.message);
+      throw OAuthError.providerError(this.name, 'Unknown error occurred');
     }
   }
 
@@ -140,8 +137,11 @@ export class GoogleOAuthProvider implements OAuthProvider {
         picture: data.picture,
         emailVerified: data.verified_email,
       };
-    } catch (error: any) {
-      throw OAuthError.providerError(this.name, error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw OAuthError.providerError(this.name, error.message);
+      }
+      throw OAuthError.providerError(this.name, 'Unknown error occurred');
     }
   }
 

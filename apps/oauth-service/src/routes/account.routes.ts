@@ -114,12 +114,14 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
         linkedAccounts,
         connectedServices,
       };
-    } catch (error: any) {
-      if (error.message.includes('authorization') || error.message.includes('session')) {
-        return reply.status(401).send({
-          error: 'INVALID_SESSION',
-          message: error.message,
-        });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message.includes('authorization') || error.message.includes('session')) {
+          return reply.status(401).send({
+            error: 'INVALID_SESSION',
+            message: error.message,
+          });
+        }
       }
 
       throw error;
@@ -187,12 +189,14 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
         success: true,
         message: `Email ${email} has been linked to your account`,
       };
-    } catch (error: any) {
-      if (error.message.includes('authorization') || error.message.includes('session')) {
-        return reply.status(401).send({
-          error: 'INVALID_SESSION',
-          message: error.message,
-        });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message.includes('authorization') || error.message.includes('session')) {
+          return reply.status(401).send({
+            error: 'INVALID_SESSION',
+            message: error.message,
+          });
+        }
       }
 
       throw error;
@@ -241,12 +245,14 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
       const providers = await oauthService.getProvidersStatus(userId);
 
       return { providers };
-    } catch (error: any) {
-      if (error.message.includes('authorization') || error.message.includes('session')) {
-        return reply.status(401).send({
-          error: 'INVALID_SESSION',
-          message: error.message,
-        });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message.includes('authorization') || error.message.includes('session')) {
+          return reply.status(401).send({
+            error: 'INVALID_SESSION',
+            message: error.message,
+          });
+        }
       }
 
       throw error;

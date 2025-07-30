@@ -142,19 +142,19 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       return reply.redirect(302, redirectUrl.toString());
-    } catch (error: any) {
+    } catch (error: unknown) {
       fastify.log.error(error);
 
       // Redirect to frontend with error (sanitize error messages)
       const redirectUrl = new URL(`${config.FRONTEND_URL}/auth/error`);
-      const errorCode = error.code || 'OAUTH_ERROR';
+      const errorCode = error instanceof Error && 'code' in error ? (error as {code?: string}).code || 'OAUTH_ERROR' : 'OAUTH_ERROR';
       redirectUrl.searchParams.set('error', errorCode);
       
       // Sanitize error messages to avoid exposing sensitive information
       let safeMessage = 'An error occurred during authentication';
       if (error instanceof OAuthError) {
         safeMessage = error.message; // OAuth errors are already safe
-      } else if (error.message && !error.message.includes('password') && !error.message.includes('secret')) {
+      } else if (error instanceof Error && error.message && !error.message.includes('password') && !error.message.includes('secret')) {
         safeMessage = error.message.substring(0, 100); // Truncate long messages
       }
       

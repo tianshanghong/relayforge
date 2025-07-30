@@ -124,6 +124,9 @@ importers:
       '@fastify/rate-limit':
         specifier: ^9.1.0
         version: 9.1.0
+      '@prisma/client':
+        specifier: ^5.19.0
+        version: 5.22.0(prisma@5.22.0)
       '@relayforge/database':
         specifier: workspace:*
         version: link:../../packages/database

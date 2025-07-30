@@ -1,4 +1,5 @@
 import { OAuthService as DatabaseOAuthService, prisma, crypto } from '@relayforge/database';
+import { Prisma } from '@prisma/client';
 import { providerRegistry } from '../providers/registry';
 import { CSRFManager } from '../utils/csrf';
 import { SessionManager } from '../utils/session';
@@ -213,7 +214,7 @@ export class OAuthFlowService {
   private async findOrCreateUserInTransaction(
     email: string,
     provider: string,
-    tx: any
+    tx: Prisma.TransactionClient
   ) {
     // Check if user exists with this email
     const existingUser = await tx.user.findFirst({
@@ -235,7 +236,7 @@ export class OAuthFlowService {
         where: { userId: existingUser.id },
       });
       const hasThisConnection = connections.some(
-        (c: any) => c.provider === provider && c.email === email
+        (c) => c.provider === provider && c.email === email
       );
 
       return {
@@ -284,7 +285,7 @@ export class OAuthFlowService {
       refreshToken: string | null;
       expiresAt: Date;
     },
-    tx: any
+    tx: Prisma.TransactionClient
   ) {
     // Check if connection already exists
     const existing = await tx.oAuthConnection.findFirst({
