@@ -248,7 +248,7 @@ export class OAuthFlowService {
     // Create new user with $5 free credits within transaction
     const newUser = await tx.user.create({
       data: {
-        primaryEmail: email,
+        primaryEmail: email.toLowerCase(),
         credits: 500, // $5.00 in cents
         linkedEmails: {
           create: {

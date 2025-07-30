@@ -3,10 +3,9 @@ process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef01
 
 // Ensure DATABASE_URL is set for tests
 if (!process.env.DATABASE_URL) {
-  // Use the local dev database for tests if available (port 5433)
-  // Otherwise use default postgres port 5432 for CI
-  const port = process.env.CI ? '5432' : '5433';
-  process.env.DATABASE_URL = `postgresql://postgres:postgres@localhost:${port}/relayforge_dev`;
+  // Only set DATABASE_URL for local development
+  // CI provides its own DATABASE_URL in the workflow
+  process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5433/relayforge_test';
 }
 
 // Import after setting env vars

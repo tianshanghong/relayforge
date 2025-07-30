@@ -1,6 +1,3 @@
-// Set environment variables before any imports
-process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-
 import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
@@ -30,7 +27,6 @@ vi.mock('../src/config', () => ({
     PORT: 3001,
   },
 }));
-
 
 async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -63,25 +59,11 @@ describe('OAuth Flow Integration Tests', () => {
   let googleProvider: GoogleProvider;
 
   beforeEach(async () => {
-    // Clear all data - handle potential errors gracefully
-    try {
-      await prisma.$transaction([
-        prisma.oAuthConnection.deleteMany(),
-        prisma.linkedEmail.deleteMany(),
-        prisma.session.deleteMany(),
-        prisma.user.deleteMany(),
-      ]);
-    } catch (error) {
-      // If transaction fails, try individual deletes
-      try {
-        await prisma.oAuthConnection.deleteMany();
-        await prisma.linkedEmail.deleteMany();
-        await prisma.session.deleteMany();
-        await prisma.user.deleteMany();
-      } catch (e) {
-        console.warn('Could not clean database:', e);
-      }
-    }
+    // Clear all data in correct order (dependencies first)
+    await prisma.oAuthConnection.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.linkedEmail.deleteMany();
+    await prisma.user.deleteMany();
 
     // Clear token refresh locks
     tokenRefreshLock.clear();
@@ -190,19 +172,17 @@ describe('OAuth Flow Integration Tests', () => {
       const cookies = response.headers['set-cookie'] as string;
       expect(cookies).toContain('rf_session=');
       
-      // Add small delay to ensure transaction completes
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify user was created with free credits
       const user = await prisma.user.findFirst({
-        where: { primaryEmail: 'test@gmail.com' },
+        where: { primaryEmail: 'test@gmail.com'.toLowerCase() },
         include: { linkedEmails: true },
       });
       
       expect(user).toBeTruthy();
       expect(user!.credits).toBe(500); // $5.00 free credits
       expect(user!.linkedEmails).toHaveLength(1);
-      expect(user!.linkedEmails[0].email).toBe('test@gmail.com');
+      expect(user!.linkedEmails[0].email).toBe('test@gmail.com'.toLowerCase());
       expect(user!.linkedEmails[0].isPrimary).toBe(true);
       
       // Verify OAuth connection was created
@@ -223,7 +203,7 @@ describe('OAuth Flow Integration Tests', () => {
       // Create existing user
       const existingUser = await prisma.user.create({
         data: {
-          primaryEmail: 'test@gmail.com',
+          primaryEmail: 'test@gmail.com'.toLowerCase(),
           credits: 100,
           linkedEmails: {
             create: {
@@ -244,8 +224,6 @@ describe('OAuth Flow Integration Tests', () => {
 
       expect(response.statusCode).toBe(302);
       
-      // Add small delay to ensure transaction completes
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify user wasn't duplicated
       const users = await prisma.user.findMany();
