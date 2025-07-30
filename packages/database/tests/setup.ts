@@ -22,37 +22,31 @@ let testDatabaseUrl = generateDatabaseURL(testDbName);
 beforeAll(async () => {
   // Create test database
   try {
-    // In CI, we use the provided DATABASE_URL directly
-    // Locally, we create a test database
-    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    // Always use relayforge_test database
+    testDatabaseUrl = generateDatabaseURL(testDbName);
     
-    if (isCI) {
-      // Use the provided DATABASE_URL
-      testDatabaseUrl = process.env.DATABASE_URL!;
-    } else {
-      // Local development - try to create database
-      if (!process.env.DATABASE_URL) {
-        throw new Error('DATABASE_URL is required for running tests');
-      }
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required for running tests');
+    }
+    
+    const rootUrl = new URL(process.env.DATABASE_URL);
+    rootUrl.pathname = '/postgres';
+    
+    // Try to create the test database (will succeed if doesn't exist, no-op if exists)
+    try {
+      execSync(`psql "${rootUrl.toString()}" -c "CREATE DATABASE ${testDbName}" 2>/dev/null || true`);
+    } catch (e) {
+      // If psql fails, try using the test database directly
+      console.log('Note: Could not create test database, will attempt to use it directly');
       
-      const rootUrl = new URL(process.env.DATABASE_URL);
-      rootUrl.pathname = '/postgres';
-      
+      // Verify we can connect to the test database
       try {
-        execSync(`psql "${rootUrl.toString()}" -c "CREATE DATABASE ${testDbName}" 2>/dev/null || true`);
-      } catch (e) {
-        // If psql fails, try using the test database directly
-        console.log('Note: Could not create test database, will attempt to use it directly');
-        
-        // Verify we can connect to the test database
-        try {
-          execSync(`psql "${testDatabaseUrl}" -c "SELECT 1" > /dev/null 2>&1`);
-        } catch (connectError) {
-          throw new Error(
-            `Cannot connect to test database at ${testDatabaseUrl}. ` +
-            `Please ensure PostgreSQL is running and the database exists.`
-          );
-        }
+        execSync(`psql "${testDatabaseUrl}" -c "SELECT 1" > /dev/null 2>&1`);
+      } catch (connectError) {
+        throw new Error(
+          `Cannot connect to test database at ${testDatabaseUrl}. ` +
+          `Please ensure PostgreSQL is running and the database exists.`
+        );
       }
     }
     

@@ -170,10 +170,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE relayforge_test;" || true
+
       - name: Run unit tests
         run: pnpm test
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relayforge_test
           NODE_ENV: test
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
