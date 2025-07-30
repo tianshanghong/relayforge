@@ -141,7 +141,7 @@ export class OAuthFlowService {
 
     // Check if token is expired or will expire soon
     const now = new Date();
-    const expiryBuffer = this.getTokenExpiryBuffer(provider); // 5 minutes by default
+    const expiryBuffer = 5 * 60 * 1000; // 5 minutes buffer
     const expiryThreshold = new Date(now.getTime() + expiryBuffer);
 
     if (tokens.expiresAt && tokens.expiresAt < expiryThreshold) {
@@ -245,21 +245,6 @@ export class OAuthFlowService {
   }
 
 
-  /**
-   * Get token expiry buffer for a provider (in milliseconds)
-   * Different providers may need different buffers
-   */
-  private getTokenExpiryBuffer(provider: string): number {
-    const bufferMinutes = {
-      google: 5,      // 5 minutes for Google
-      github: 10,     // 10 minutes for GitHub (longer-lived tokens)
-      slack: 3,       // 3 minutes for Slack (aggressive rotation)
-      default: 5      // 5 minutes default
-    };
-
-    const minutes = bufferMinutes[provider as keyof typeof bufferMinutes] || bufferMinutes.default;
-    return minutes * 60 * 1000; // Convert to milliseconds
-  }
 
   private calculateExpiryDate(expiresIn?: number): Date {
     if (!expiresIn) {
