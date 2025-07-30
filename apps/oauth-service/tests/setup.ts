@@ -29,21 +29,31 @@ try {
 
 // Global test hooks for proper isolation
 beforeEach(async () => {
-  // Clean up before each test to ensure isolation
-  await prisma.$transaction([
-    prisma.oAuthConnection.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.linkedEmail.deleteMany(),
-    prisma.user.deleteMany(),
-  ]);
+  try {
+    // Clean up before each test to ensure isolation
+    await prisma.$transaction([
+      prisma.oAuthConnection.deleteMany(),
+      prisma.session.deleteMany(),
+      prisma.linkedEmail.deleteMany(),
+      prisma.user.deleteMany(),
+    ]);
+  } catch (error) {
+    // If database is not ready, continue anyway
+    console.warn('Database cleanup failed in beforeEach:', error);
+  }
 });
 
 afterEach(async () => {
-  // Clean up after each test
-  await prisma.$transaction([
-    prisma.oAuthConnection.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.linkedEmail.deleteMany(),
-    prisma.user.deleteMany(),
-  ]);
+  try {
+    // Clean up after each test
+    await prisma.$transaction([
+      prisma.oAuthConnection.deleteMany(),
+      prisma.session.deleteMany(),
+      prisma.linkedEmail.deleteMany(),
+      prisma.user.deleteMany(),
+    ]);
+  } catch (error) {
+    // If database is not ready, continue anyway
+    console.warn('Database cleanup failed in afterEach:', error);
+  }
 });

@@ -32,14 +32,22 @@ export class SecureAccountLinking {
     // Check for EXACT email match only
     const existingUser = await tx.user.findFirst({
       where: {
-        linkedEmails: {
-          some: {
-            email: normalizedEmail,
+        OR: [
+          {
+            primaryEmail: normalizedEmail,
           },
-        },
+          {
+            linkedEmails: {
+              some: {
+                email: normalizedEmail,
+              },
+            },
+          },
+        ],
       },
       include: {
         oauthConnections: true,
+        linkedEmails: true,
       },
     });
 

@@ -312,9 +312,14 @@ describe('OAuth Security Audit Tests', () => {
         where: { sessionId },
       });
 
-      expect(updatedSession!.lastAccessedAt.getTime()).toBeGreaterThan(
-        initialSession!.lastAccessedAt.getTime()
-      );
+      expect(updatedSession).toBeTruthy();
+      expect(initialSession).toBeTruthy();
+      
+      if (updatedSession && initialSession) {
+        expect(updatedSession.lastAccessedAt.getTime()).toBeGreaterThan(
+          initialSession.lastAccessedAt.getTime()
+        );
+      }
 
       console.log('✅ Session Security: Access tracking verified');
     });
