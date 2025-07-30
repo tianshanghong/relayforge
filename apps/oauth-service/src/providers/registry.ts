@@ -36,6 +36,11 @@ export class ProviderRegistry {
   getAll(): Map<string, OAuthProvider> {
     return this.providers;
   }
+
+  // Method for testing - allows registering custom providers
+  register(name: string, provider: OAuthProvider): void {
+    this.providers.set(name, provider);
+  }
 }
 
 // Singleton instance

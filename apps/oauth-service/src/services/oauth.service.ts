@@ -154,9 +154,18 @@ export class OAuthFlowService {
 
       // No refresh in progress, start a new one
       const refreshPromise = this.performTokenRefresh(userId, provider, tokens.refreshToken || null);
+      
+      // Store the promise in the lock
       tokenRefreshLock.setRefreshPromise(userId, provider, refreshPromise);
       
-      return refreshPromise;
+      // Add a catch handler that re-throws to handle the promise chain
+      // This prevents unhandled rejection warnings while still propagating errors
+      const handledPromise = refreshPromise.catch(error => {
+        // Re-throw to propagate the error to the caller
+        throw error;
+      });
+      
+      return handledPromise;
     }
 
     return tokens.accessToken;
@@ -219,7 +228,7 @@ export class OAuthFlowService {
         }
         
         // Don't retry on non-recoverable errors
-        if (error instanceof OAuthError && error.message.includes('invalid_grant')) {
+        if (error instanceof OAuthError && (error as OAuthError & { code: string }).code === 'INVALID_GRANT') {
           throw error;
         }
 
