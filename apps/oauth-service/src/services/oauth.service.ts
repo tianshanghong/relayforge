@@ -155,15 +155,17 @@ export class OAuthFlowService {
       // No refresh in progress, start a new one
       const refreshPromise = this.performTokenRefresh(userId, provider, tokens.refreshToken || null);
       
-      // Store the promise in the lock
-      tokenRefreshLock.setRefreshPromise(userId, provider, refreshPromise);
+      // Attach a catch handler immediately to prevent unhandled rejection warnings
+      const handledPromise = refreshPromise.then(
+        token => token,
+        error => {
+          // Re-throw the error to propagate it, but now it's been "handled"
+          throw error;
+        }
+      );
       
-      // Add a catch handler that re-throws to handle the promise chain
-      // This prevents unhandled rejection warnings while still propagating errors
-      const handledPromise = refreshPromise.catch(error => {
-        // Re-throw to propagate the error to the caller
-        throw error;
-      });
+      // Store the handled promise in the lock
+      tokenRefreshLock.setRefreshPromise(userId, provider, handledPromise);
       
       return handledPromise;
     }
