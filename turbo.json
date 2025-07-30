@@ -31,7 +31,8 @@
     },
     "test:performance": {
       "dependsOn": ["build"],
-      "outputs": ["performance-results.json", "performance-report.html"]
+      "outputs": ["performance-results.json", "performance-report.html"],
+      "env": ["DATABASE_URL", "ENCRYPTION_KEY"]
     }
   }
 }

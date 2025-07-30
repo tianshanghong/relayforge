@@ -9,7 +9,7 @@
     "test": "turbo run test --concurrency=1",
     "test:parallel": "turbo run test",
     "test:integration": "turbo run test:integration",
-    "test:performance": "turbo run test:performance",
+    "test:performance": "turbo run test:performance --concurrency=1",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
