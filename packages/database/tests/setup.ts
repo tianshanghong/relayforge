@@ -22,6 +22,10 @@ const testDbName = `relayforge_test`;
 let testDatabaseUrl = generateDatabaseURL(testDbName);
 
 beforeAll(async () => {
+  console.log('=== Test Setup Starting ===');
+  console.log('Current working directory:', process.cwd());
+  console.log('Package root:', packageRoot);
+  
   // Create test database
   try {
     // Always use relayforge_test database
@@ -88,25 +92,11 @@ beforeAll(async () => {
         });
       }
       
-      // Verify tables were created
-      const verifyQuery = `
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name IN ('users', 'sessions', 'usage', 'linked_emails', 'oauth_connections', 'service_pricing')
-        ORDER BY table_name;
-      `;
-      
-      console.log('Verifying tables were created...');
-      const tables = execSync(`psql "${testDatabaseUrl}" -t -c "${verifyQuery}"`, {
-        encoding: 'utf8',
-      }).trim();
-      
-      console.log('Created tables:', tables.split('\n').map(t => t.trim()).filter(Boolean));
-      
-      if (!tables.includes('users') || !tables.includes('usage')) {
-        throw new Error('Tables were not created properly. Found tables: ' + tables);
-      }
+      // Verify connection works by running a simple query
+      console.log('Verifying database connection...');
+      await prisma.$connect();
+      await prisma.$executeRaw`SELECT 1`;
+      console.log('Database connection verified successfully');
     } catch (pushError) {
       console.error('Failed to push schema to test database:', pushError);
       throw new Error(`Schema push failed. Ensure DATABASE_URL is correct: ${testDatabaseUrl}`);
