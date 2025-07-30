@@ -95,11 +95,16 @@ describe('OAuth Security Audit Tests', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     
-    // Extra cleanup to ensure no data persists
-    await prisma.oAuthConnection.deleteMany();
-    await prisma.session.deleteMany();
-    await prisma.linkedEmail.deleteMany();
-    await prisma.user.deleteMany();
+    // Extra cleanup to ensure no data persists - use transaction for consistency
+    await prisma.$transaction([
+      prisma.oAuthConnection.deleteMany(),
+      prisma.session.deleteMany(),
+      prisma.linkedEmail.deleteMany(),
+      prisma.user.deleteMany(),
+    ]);
+    
+    // Ensure no lingering connections
+    await prisma.$disconnect();
   });
 
   describe('CSRF Protection Security Tests', () => {
@@ -534,31 +539,39 @@ describe('OAuth Security Audit Tests', () => {
     it('should maintain transaction atomicity', async () => {
       console.log('💾 Testing database security: transaction atomicity');
 
-      // Clean up any existing data before test
-      await prisma.oAuthConnection.deleteMany();
-      await prisma.session.deleteMany();
-      await prisma.linkedEmail.deleteMany();
-      await prisma.user.deleteMany();
+      // Clean up any existing data before test - use transaction for atomicity
+      await prisma.$transaction([
+        prisma.oAuthConnection.deleteMany(),
+        prisma.session.deleteMany(),
+        prisma.linkedEmail.deleteMany(),
+        prisma.user.deleteMany(),
+      ]);
+      
+      // Verify cleanup worked
+      const preTestUserCount = await prisma.user.count();
+      expect(preTestUserCount).toBe(0);
 
       // Mock failure after user creation but before OAuth connection
-      let callCount = 0;
-      const transactionSpy = vi.spyOn(prisma, '$transaction').mockImplementation(async (fn) => {
-        if (callCount++ === 0) {
-          // Simulate failure in the middle of transaction
-          throw new Error('Simulated transaction failure');
-        }
-        return fn(prisma);
+      const transactionSpy = vi.spyOn(prisma, '$transaction').mockImplementation(async () => {
+        // Always throw error to simulate transaction failure
+        throw new Error('Simulated transaction failure');
       });
 
       const state = CSRFManager.createState('google');
       
-      await app.inject({
+      // The request should fail due to transaction error
+      const response = await app.inject({
         method: 'GET',
         url: `/oauth/google/callback?code=transaction-test&state=${state}`,
       });
 
       // Restore the original transaction method
       transactionSpy.mockRestore();
+      
+      // OAuth callbacks redirect on error, check for error redirect
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toContain('/auth/error');
+      expect(response.headers.location).toContain('error=');
 
       // Should have no partial data
       const userCount = await prisma.user.count();

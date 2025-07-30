@@ -79,6 +79,7 @@ describe('OAuth Flow Integration Tests', () => {
     if (app) {
       await app.close();
     }
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -622,7 +623,7 @@ describe('OAuth Flow Integration Tests', () => {
 
     it('should handle database errors in transaction', async () => {
       // Mock database error - spy on the transaction
-      vi.spyOn(prisma, '$transaction').mockRejectedValue(
+      const transactionSpy = vi.spyOn(prisma, '$transaction').mockRejectedValue(
         new Error('Database connection error')
       );
 
@@ -645,10 +646,13 @@ describe('OAuth Flow Integration Tests', () => {
         url: `/oauth/google/callback?code=test-code&state=${state}`,
       });
 
+      // Restore the mock immediately after use
+      transactionSpy.mockRestore();
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toContain('/auth/error');
       
-      // Verify no partial data was saved
+      // Verify no partial data was saved - use restored prisma
       const users = await prisma.user.findMany();
       expect(users).toHaveLength(0);
       

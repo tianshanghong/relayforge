@@ -91,6 +91,7 @@ describe('Core OAuth Integration Tests', () => {
     if (app) {
       await app.close();
     }
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -354,7 +355,7 @@ describe('Core OAuth Integration Tests', () => {
       console.log('⚠️  Testing database error handling...');
 
       // Mock transaction failure
-      vi.spyOn(prisma, '$transaction').mockRejectedValue(
+      const transactionSpy = vi.spyOn(prisma, '$transaction').mockRejectedValue(
         new Error('Database connection error')
       );
 
@@ -365,10 +366,13 @@ describe('Core OAuth Integration Tests', () => {
         url: `/oauth/google/callback?code=db-error-test&state=${state}`,
       });
 
+      // Restore the mock immediately after use
+      transactionSpy.mockRestore();
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toContain('/auth/error');
 
-      // Verify no partial data was saved
+      // Verify no partial data was saved - use restored prisma
       const userCount = await prisma.user.count();
       const connectionCount = await prisma.oAuthConnection.count();
       const sessionCount = await prisma.session.count();

@@ -10,6 +10,8 @@ if (!process.env.DATABASE_URL) {
 // Import after setting env vars
 import { execSync } from 'child_process';
 import path from 'path';
+import { afterEach, beforeEach } from 'vitest';
+import { prisma } from '@relayforge/database';
 
 // Ensure database schema is up to date
 const databasePath = path.join(__dirname, '../../../packages/database');
@@ -24,3 +26,24 @@ try {
   console.error('Failed to apply database schema:', error);
   // Continue anyway - the database might already be set up
 }
+
+// Global test hooks for proper isolation
+beforeEach(async () => {
+  // Clean up before each test to ensure isolation
+  await prisma.$transaction([
+    prisma.oAuthConnection.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.linkedEmail.deleteMany(),
+    prisma.user.deleteMany(),
+  ]);
+});
+
+afterEach(async () => {
+  // Clean up after each test
+  await prisma.$transaction([
+    prisma.oAuthConnection.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.linkedEmail.deleteMany(),
+    prisma.user.deleteMany(),
+  ]);
+});

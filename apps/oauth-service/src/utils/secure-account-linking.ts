@@ -175,10 +175,16 @@ export class SecureAccountLinking {
       data: { userId: keepAccountId },
     });
 
-    // Delete merged account
-    await tx.user.delete({
+    // Delete merged account only if it exists
+    const userToDelete = await tx.user.findUnique({
       where: { id: mergeAccountId },
     });
+    
+    if (userToDelete) {
+      await tx.user.delete({
+        where: { id: mergeAccountId },
+      });
+    }
   }
 }
 
