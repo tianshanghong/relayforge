@@ -89,7 +89,7 @@ describe('OAuth Token Refresh', () => {
 
     // Register mock provider
     mockProvider = new MockOAuthProvider();
-    providerRegistry.register('mockProvider', mockProvider);
+    providerRegistry._registerForTesting('mockProvider', mockProvider);
   });
 
   beforeEach(() => {
