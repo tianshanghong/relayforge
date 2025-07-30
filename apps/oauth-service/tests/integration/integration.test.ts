@@ -3,16 +3,16 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import { prisma } from '@relayforge/database';
-import { authRoutes } from '../src/routes/auth.routes';
-import { accountRoutes } from '../src/routes/account.routes';
-import { providerRegistry } from '../src/providers/registry';
-import { CSRFManager } from '../src/utils/csrf';
-import { SessionManager } from '../src/utils/session';
-import { errorHandler } from '../src/middleware/error-handler';
-import type { GoogleProvider } from '../src/providers/google.provider';
+import { authRoutes } from '../../src/routes/auth.routes';
+import { accountRoutes } from '../../src/routes/account.routes';
+import { providerRegistry } from '../../src/providers/registry';
+import { CSRFManager } from '../../src/utils/csrf';
+import { SessionManager } from '../../src/utils/session';
+import { errorHandler } from '../../src/middleware/error-handler';
+import type { GoogleProvider } from '../../src/providers/google.provider';
 
 // Mock environment for integration testing
-vi.mock('../src/config', () => ({
+vi.mock('../../src/config', () => ({
   config: {
     GOOGLE_CLIENT_ID: 'integration-test-client-id',
     GOOGLE_CLIENT_SECRET: 'integration-test-client-secret',
@@ -103,7 +103,7 @@ describe('OAuth Service Integration Tests', () => {
     vi.clearAllMocks();
     
     // Clear token refresh lock to prevent state leakage between tests
-    const { tokenRefreshLock } = await import('../src/utils/token-lock');
+    const { tokenRefreshLock } = await import('../../src/utils/token-lock');
     tokenRefreshLock.clear();
   });
 
@@ -309,7 +309,7 @@ describe('OAuth Service Integration Tests', () => {
       });
 
       // Import and use the OAuth service directly to test token refresh
-      const { oauthFlowService } = await import('../src/services/oauth.service');
+      const { oauthFlowService } = await import('../../src/services/oauth.service');
       const validToken = await oauthFlowService.getValidToken(userId, 'google');
 
       expect(validToken).toBe('new-refreshed-token');
@@ -336,7 +336,7 @@ describe('OAuth Service Integration Tests', () => {
         throw new Error('invalid_grant');
       });
 
-      const { oauthFlowService } = await import('../src/services/oauth.service');
+      const { oauthFlowService } = await import('../../src/services/oauth.service');
       
       // Test that the error is properly thrown
       await expect(

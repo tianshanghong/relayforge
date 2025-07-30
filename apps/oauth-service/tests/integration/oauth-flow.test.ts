@@ -3,16 +3,16 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import { prisma } from '@relayforge/database';
-import { authRoutes } from '../src/routes/auth.routes';
-import { providerRegistry } from '../src/providers/registry';
-import { CSRFManager } from '../src/utils/csrf';
-import { SessionManager } from '../src/utils/session';
-import { tokenRefreshLock } from '../src/utils/token-lock';
-import { errorHandler } from '../src/middleware/error-handler';
-import type { GoogleProvider } from '../src/providers/google.provider';
+import { authRoutes } from '../../src/routes/auth.routes';
+import { providerRegistry } from '../../src/providers/registry';
+import { CSRFManager } from '../../src/utils/csrf';
+import { SessionManager } from '../../src/utils/session';
+import { tokenRefreshLock } from '../../src/utils/token-lock';
+import { errorHandler } from '../../src/middleware/error-handler';
+import type { GoogleProvider } from '../../src/providers/google.provider';
 
 // Mock environment
-vi.mock('../src/config', () => ({
+vi.mock('../../src/config', () => ({
   config: {
     GOOGLE_CLIENT_ID: 'test-client-id',
     GOOGLE_CLIENT_SECRET: 'test-client-secret',
@@ -404,7 +404,7 @@ describe('OAuth Flow Integration Tests', () => {
       });
 
       // Import the service to test
-      const { oauthFlowService } = await import('../src/services/oauth.service');
+      const { oauthFlowService } = await import('../../src/services/oauth.service');
 
       // Simulate multiple concurrent requests for the same token
       const promises = Promise.all([
@@ -433,7 +433,7 @@ describe('OAuth Flow Integration Tests', () => {
     it.skip('should handle refresh token failure', async () => {
       // Skip this test for now - it's causing an unhandled rejection warning in Vitest
       // even though the rejection is properly handled by .rejects.toThrow()
-      const { oauthFlowService } = await import('../src/services/oauth.service');
+      const { oauthFlowService } = await import('../../src/services/oauth.service');
       
       vi.spyOn(googleProvider, 'refreshToken').mockImplementation(() => 
         Promise.reject(new Error('invalid_grant'))

@@ -3,14 +3,14 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import { prisma } from '@relayforge/database';
-import { authRoutes } from '../src/routes/auth.routes';
-import { providerRegistry } from '../src/providers/registry';
-import { CSRFManager } from '../src/utils/csrf';
-import { errorHandler } from '../src/middleware/error-handler';
-import type { GoogleProvider } from '../src/providers/google.provider';
+import { authRoutes } from '../../src/routes/auth.routes';
+import { providerRegistry } from '../../src/providers/registry';
+import { CSRFManager } from '../../src/utils/csrf';
+import { errorHandler } from '../../src/middleware/error-handler';
+import type { GoogleProvider } from '../../src/providers/google.provider';
 
 // Mock environment
-vi.mock('../src/config', () => ({
+vi.mock('../../src/config', () => ({
   config: {
     GOOGLE_CLIENT_ID: 'benchmark-client-id',
     GOOGLE_CLIENT_SECRET: 'benchmark-client-secret',

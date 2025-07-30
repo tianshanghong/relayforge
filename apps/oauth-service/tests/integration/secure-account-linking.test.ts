@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { prisma } from '@relayforge/database';
-import { SecureAccountLinking } from '../src/utils/secure-account-linking';
+import { SecureAccountLinking } from '../../src/utils/secure-account-linking';
 
 describe('Secure Account Linking', () => {
   beforeEach(async () => {
