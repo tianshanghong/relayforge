@@ -145,10 +145,20 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error: any) {
       fastify.log.error(error);
 
-      // Redirect to frontend with error
+      // Redirect to frontend with error (sanitize error messages)
       const redirectUrl = new URL(`${config.FRONTEND_URL}/auth/error`);
-      redirectUrl.searchParams.set('error', error.code || 'OAUTH_ERROR');
-      redirectUrl.searchParams.set('message', error.message);
+      const errorCode = error.code || 'OAUTH_ERROR';
+      redirectUrl.searchParams.set('error', errorCode);
+      
+      // Sanitize error messages to avoid exposing sensitive information
+      let safeMessage = 'An error occurred during authentication';
+      if (error instanceof OAuthError) {
+        safeMessage = error.message; // OAuth errors are already safe
+      } else if (error.message && !error.message.includes('password') && !error.message.includes('secret')) {
+        safeMessage = error.message.substring(0, 100); // Truncate long messages
+      }
+      
+      redirectUrl.searchParams.set('message', safeMessage);
       redirectUrl.searchParams.set('provider', provider);
 
       return reply.redirect(302, redirectUrl.toString());

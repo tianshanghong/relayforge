@@ -9,7 +9,9 @@
     "start": "node dist/index.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:performance": "vitest run --config vitest.config.load.ts",
+    "test:performance:watch": "vitest --watch --config vitest.config.load.ts"
   },
   "dependencies": {
     "@relayforge/database": "workspace:*",

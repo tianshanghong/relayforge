@@ -115,7 +115,7 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
         connectedServices,
       };
     } catch (error: any) {
-      if (error.message.includes('session')) {
+      if (error.message.includes('authorization') || error.message.includes('session')) {
         return reply.status(401).send({
           error: 'INVALID_SESSION',
           message: error.message,
@@ -188,7 +188,7 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
         message: `Email ${email} has been linked to your account`,
       };
     } catch (error: any) {
-      if (error.message.includes('session')) {
+      if (error.message.includes('authorization') || error.message.includes('session')) {
         return reply.status(401).send({
           error: 'INVALID_SESSION',
           message: error.message,
@@ -242,7 +242,7 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
 
       return { providers };
     } catch (error: any) {
-      if (error.message.includes('session')) {
+      if (error.message.includes('authorization') || error.message.includes('session')) {
         return reply.status(401).send({
           error: 'INVALID_SESSION',
           message: error.message,
