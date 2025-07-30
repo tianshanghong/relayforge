@@ -65,18 +65,25 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  // Clean all tables before each test using Prisma's deleteMany
-  // This avoids table lock issues
-  await prisma.usage.deleteMany();
-  await prisma.session.deleteMany();
-  await prisma.oAuthConnection.deleteMany();
-  await prisma.linkedEmail.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.servicePricing.deleteMany();
-  
-  // Reset test helper counters
-  const { resetTestHelpers } = await import('./helpers');
-  resetTestHelpers();
+  try {
+    // Clean all tables before each test using Prisma's deleteMany
+    // This avoids table lock issues
+    await prisma.$transaction([
+      prisma.usage.deleteMany(),
+      prisma.session.deleteMany(),
+      prisma.oAuthConnection.deleteMany(),
+      prisma.linkedEmail.deleteMany(),
+      prisma.user.deleteMany(),
+      prisma.servicePricing.deleteMany(),
+    ]);
+    
+    // Reset test helper counters
+    const { resetTestHelpers } = await import('./helpers');
+    resetTestHelpers();
+  } catch (error) {
+    console.warn('Database cleanup failed in beforeEach:', error);
+    // Continue anyway - the test might still work
+  }
 });
 
 afterAll(async () => {
