@@ -325,12 +325,6 @@ class MCPGateway {
 4. **Audit Trail**: Complete usage history
 5. **Rate Limiting**: Prevent abuse
 
-## Status
-✅ Basic infrastructure setup
-✅ Architecture design complete
-🔄 Next: OAuth service with account linking
-🔄 Then: Gateway with service routing
-
 ## Hook Commands
 - Build: `pnpm build`
 - Test: `pnpm test` 

@@ -98,3 +98,6 @@ Thumbs.db
 .turbo/
 docs/internal/apps/oauth-service/.env
 apps/mcp-gateway/.env
+
+# Local development documentation
+CLAUDE.local.md
