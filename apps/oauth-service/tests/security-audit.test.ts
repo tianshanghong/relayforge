@@ -91,7 +91,15 @@ describe('OAuth Security Audit Tests', () => {
     if (app) {
       await app.close();
     }
+    // Restore all mocks to prevent interference between tests
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+    
+    // Extra cleanup to ensure no data persists
+    await prisma.oAuthConnection.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.linkedEmail.deleteMany();
+    await prisma.user.deleteMany();
   });
 
   describe('CSRF Protection Security Tests', () => {
@@ -526,9 +534,15 @@ describe('OAuth Security Audit Tests', () => {
     it('should maintain transaction atomicity', async () => {
       console.log('💾 Testing database security: transaction atomicity');
 
+      // Clean up any existing data before test
+      await prisma.oAuthConnection.deleteMany();
+      await prisma.session.deleteMany();
+      await prisma.linkedEmail.deleteMany();
+      await prisma.user.deleteMany();
+
       // Mock failure after user creation but before OAuth connection
       let callCount = 0;
-      vi.spyOn(prisma, '$transaction').mockImplementation(async (fn) => {
+      const transactionSpy = vi.spyOn(prisma, '$transaction').mockImplementation(async (fn) => {
         if (callCount++ === 0) {
           // Simulate failure in the middle of transaction
           throw new Error('Simulated transaction failure');
@@ -542,6 +556,9 @@ describe('OAuth Security Audit Tests', () => {
         method: 'GET',
         url: `/oauth/google/callback?code=transaction-test&state=${state}`,
       });
+
+      // Restore the original transaction method
+      transactionSpy.mockRestore();
 
       // Should have no partial data
       const userCount = await prisma.user.count();
@@ -557,6 +574,12 @@ describe('OAuth Security Audit Tests', () => {
 
     it('should prevent SQL injection via parameterized queries', async () => {
       console.log('💾 Testing database security: SQL injection prevention');
+
+      // Clean up any existing data before test
+      await prisma.oAuthConnection.deleteMany();
+      await prisma.session.deleteMany();
+      await prisma.linkedEmail.deleteMany();
+      await prisma.user.deleteMany();
 
       // Try SQL injection in email field
       vi.spyOn(googleProvider, 'getUserInfo').mockResolvedValue({
