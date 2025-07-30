@@ -6,6 +6,21 @@ import { tokenRefreshLock } from '../src/utils/token-lock';
 import { OAuthError } from '../src/utils/errors';
 import type { OAuthProvider } from '../src/providers/base.provider';
 
+// Mock environment
+vi.mock('../src/config', () => ({
+  config: {
+    GOOGLE_CLIENT_ID: 'test-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-client-secret',
+    GOOGLE_REDIRECT_URL: 'http://localhost:3001/oauth/google/callback',
+    JWT_SECRET: 'test-jwt-secret-that-is-long-enough-for-security',
+    SESSION_DURATION_DAYS: 30,
+    NODE_ENV: 'test',
+    ALLOWED_ORIGINS: ['http://localhost:3000'],
+    COOKIE_SECRET: 'test-cookie-secret',
+    LOG_LEVEL: 'error',
+  },
+}));
+
 // Mock provider for testing
 class MockOAuthProvider implements OAuthProvider {
   name = 'mockProvider';
