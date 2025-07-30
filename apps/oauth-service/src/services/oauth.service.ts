@@ -190,6 +190,14 @@ export class OAuthFlowService {
       throw new Error(`Unknown OAuth provider: ${provider}`);
     }
 
+    // Find the connection once before retry loop to avoid redundant queries
+    const connections = await this.dbOAuthService.getUserConnections(userId);
+    const conn = connections.find(c => c.provider === provider);
+    
+    if (!conn) {
+      throw new Error('OAuth connection not found');
+    }
+
     // Retry logic with exponential backoff
     const maxRetries = 3;
     const baseDelay = 1000; // 1 second
@@ -198,14 +206,6 @@ export class OAuthFlowService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const newTokens = await oauthProvider.refreshToken(refreshToken);
-
-        // Find the connection to update
-        const connections = await this.dbOAuthService.getUserConnections(userId);
-        const conn = connections.find(c => c.provider === provider);
-        
-        if (!conn) {
-          throw new Error('OAuth connection not found');
-        }
 
         // Update tokens - handle refresh token rotation
         await this.dbOAuthService.updateTokens(
@@ -220,14 +220,10 @@ export class OAuthFlowService {
         lastError = error as Error;
         
         // Track refresh failure attempt
-        const connections = await this.dbOAuthService.getUserConnections(userId);
-        const conn = connections.find(c => c.provider === provider);
-        if (conn) {
-          await this.dbOAuthService.trackRefreshFailure(
-            conn.id,
-            lastError.message.substring(0, 255) // Limit error message length
-          );
-        }
+        await this.dbOAuthService.trackRefreshFailure(
+          conn.id,
+          lastError.message.substring(0, 255) // Limit error message length
+        );
         
         // Don't retry on non-recoverable errors
         if (error instanceof OAuthError && (error as OAuthError & { code: string }).code === 'INVALID_GRANT') {
