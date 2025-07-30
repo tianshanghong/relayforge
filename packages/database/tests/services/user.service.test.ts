@@ -63,9 +63,9 @@ describe('UserService', () => {
 
   describe('findUserByEmail', () => {
     it('should find user by linked email', async () => {
-      const createdUser = await testHelpers.createUser('find@example.com');
+      const createdUser = await testHelpers.createUser();
       
-      const foundUser = await userService.findUserByEmail('find@example.com');
+      const foundUser = await userService.findUserByEmail(createdUser.primaryEmail);
       expect(foundUser?.id).toBe(createdUser.id);
     });
 
@@ -75,54 +75,56 @@ describe('UserService', () => {
     });
 
     it('should normalize email when searching', async () => {
-      await testHelpers.createUser('search@example.com');
+      const testUser = await testHelpers.createUser();
       
-      const user = await userService.findUserByEmail('  Search@Example.COM  ');
+      const user = await userService.findUserByEmail(`  ${testUser.primaryEmail.toUpperCase()}  `);
       expect(user).toBeTruthy();
-      expect(user?.primaryEmail).toBe('search@example.com');
+      expect(user?.primaryEmail).toBe(testUser.primaryEmail);
     });
   });
 
   describe('linkEmail', () => {
     it('should link new email to user', async () => {
-      const user = await testHelpers.createUser('primary@example.com');
+      const user = await testHelpers.createUser();
       
+      const uniqueEmail = `secondary-${Date.now()}@company.com`;
       const linkedEmail = await userService.linkEmail({
         userId: user.id,
-        email: 'secondary@company.com',
+        email: uniqueEmail,
         provider: 'github',
       });
 
-      expect(linkedEmail.email).toBe('secondary@company.com');
+      expect(linkedEmail.email).toBe(uniqueEmail);
       expect(linkedEmail.provider).toBe('github');
       expect(linkedEmail.isPrimary).toBe(false);
     });
 
     it('should throw error if email belongs to another user', async () => {
-      const user1 = await testHelpers.createUser('user1@example.com');
-      const user2 = await testHelpers.createUser('user2@example.com');
+      const user1 = await testHelpers.createUser();
+      const user2 = await testHelpers.createUser();
 
       await expect(
         userService.linkEmail({
           userId: user2.id,
-          email: 'user1@example.com',
+          email: user1.primaryEmail, // Use the actual email from user1
           provider: 'google',
         })
       ).rejects.toThrow('already linked to another account');
     });
 
     it('should return existing linked email if already linked', async () => {
-      const user = await testHelpers.createUser('user@example.com');
+      const user = await testHelpers.createUser();
       
+      const uniqueWorkEmail = `work-${Date.now()}@company.com`;
       const linked1 = await userService.linkEmail({
         userId: user.id,
-        email: 'work@company.com',
+        email: uniqueWorkEmail,
         provider: 'slack',
       });
 
       const linked2 = await userService.linkEmail({
         userId: user.id,
-        email: 'work@company.com',
+        email: uniqueWorkEmail,
         provider: 'slack',
       });
 
@@ -132,30 +134,31 @@ describe('UserService', () => {
 
   describe('updatePrimaryEmail', () => {
     it('should update primary email', async () => {
-      const user = await testHelpers.createUser('old@example.com');
+      const user = await testHelpers.createUser();
+      const newEmail = `new-${Date.now()}@example.com`;
       await userService.linkEmail({
         userId: user.id,
-        email: 'new@example.com',
+        email: newEmail,
         provider: 'github',
       });
 
-      const updatedUser = await userService.updatePrimaryEmail(user.id, 'new@example.com');
-      expect(updatedUser.primaryEmail).toBe('new@example.com');
+      const updatedUser = await userService.updatePrimaryEmail(user.id, newEmail);
+      expect(updatedUser.primaryEmail).toBe(newEmail);
 
       // Check that email flags are updated
       const oldEmail = await prisma.linkedEmail.findUnique({
-        where: { email: 'old@example.com' },
+        where: { email: user.primaryEmail },
       });
-      const newEmail = await prisma.linkedEmail.findUnique({
-        where: { email: 'new@example.com' },
+      const newEmailRecord = await prisma.linkedEmail.findUnique({
+        where: { email: newEmail },
       });
 
       expect(oldEmail?.isPrimary).toBe(false);
-      expect(newEmail?.isPrimary).toBe(true);
+      expect(newEmailRecord?.isPrimary).toBe(true);
     });
 
     it('should throw error if email not linked to user', async () => {
-      const user = await testHelpers.createUser('user@example.com');
+      const user = await testHelpers.createUser();
 
       await expect(
         userService.updatePrimaryEmail(user.id, 'notlinked@example.com')
@@ -244,7 +247,7 @@ describe('UserService', () => {
 
   describe('deductCredits', () => {
     it('should deduct credits for valid service', async () => {
-      const user = await testHelpers.createUser('user@example.com', 100);
+      const user = await testHelpers.createUser(undefined, 100);
       await testHelpers.createServicePricing('test-service', 10);
 
       const success = await userService.deductCredits(user.id, 'test-service');
@@ -257,7 +260,7 @@ describe('UserService', () => {
     });
 
     it('should return false for insufficient credits', async () => {
-      const user = await testHelpers.createUser('poor@example.com', 5);
+      const user = await testHelpers.createUser(undefined, 5);
       await testHelpers.createServicePricing('expensive-service', 10);
 
       const success = await userService.deductCredits(user.id, 'expensive-service');
@@ -280,9 +283,10 @@ describe('UserService', () => {
 
     it('should throw error for inactive service', async () => {
       const user = await testHelpers.createUser();
+      const serviceName = `inactive-service-${Date.now()}`;
       await prisma.servicePricing.create({
         data: {
-          service: 'inactive-service',
+          service: serviceName,
           pricePerCall: 10,
           category: 'test',
           active: false,
@@ -290,14 +294,14 @@ describe('UserService', () => {
       });
 
       await expect(
-        userService.deductCredits(user.id, 'inactive-service')
-      ).rejects.toThrow('Service inactive-service is not available');
+        userService.deductCredits(user.id, serviceName)
+      ).rejects.toThrow(`Service ${serviceName} is not available`);
     });
   });
 
   describe('addCredits', () => {
     it('should add credits to user account', async () => {
-      const user = await testHelpers.createUser('user@example.com', 100);
+      const user = await testHelpers.createUser(undefined, 100);
 
       const updatedUser = await userService.addCredits(user.id, 50);
       expect(updatedUser.credits).toBe(150);
@@ -311,11 +315,16 @@ describe('UserService', () => {
       // Create active session
       const activeSessionId = await testHelpers.createSession(user.id);
       
+      // Count existing expired sessions before test
+      const initialExpiredCount = await prisma.session.count({
+        where: { expiresAt: { lt: new Date() } }
+      });
+
       // Create expired sessions
       for (let i = 0; i < 3; i++) {
         await prisma.session.create({
           data: {
-            sessionId: `expired-${i}`,
+            sessionId: `expired-${Date.now()}-${i}`,
             userId: user.id,
             expiresAt: new Date(Date.now() - 1000),
           },
@@ -323,7 +332,7 @@ describe('UserService', () => {
       }
 
       const deletedCount = await userService.cleanupExpiredSessions();
-      expect(deletedCount).toBe(3);
+      expect(deletedCount).toBe(initialExpiredCount + 3);
 
       // Active session should still exist
       const activeSession = await prisma.session.findUnique({

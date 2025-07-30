@@ -64,6 +64,8 @@ describe('1000 Concurrent OAuth Flow Benchmark', () => {
     tokenType: 'Bearer',
   };
 
+  let userCounter = 0;
+
   beforeEach(async () => {
     // Clear all data
     await prisma.oAuthConnection.deleteMany();
@@ -73,6 +75,7 @@ describe('1000 Concurrent OAuth Flow Benchmark', () => {
 
     app = await buildApp();
     googleProvider = providerRegistry.get('google') as GoogleProvider;
+    userCounter = 0;
 
     // Mock with minimal delay for maximum throughput
     vi.spyOn(googleProvider, 'exchangeCode').mockImplementation(async (code: string) => {
@@ -83,11 +86,13 @@ describe('1000 Concurrent OAuth Flow Benchmark', () => {
     });
 
     vi.spyOn(googleProvider, 'getUserInfo').mockImplementation(async (accessToken: string) => {
-      const codeMatch = accessToken.match(/benchmark-code-(\d+)/);
-      const userId = codeMatch ? codeMatch[1] : Math.random().toString(36).substr(2, 9);
+      // Extract the user ID from the code to ensure uniqueness
+      const codeMatch = accessToken.match(/access-token-for-benchmark-code-(\d+)/);
+      const userId = codeMatch ? codeMatch[1] : String(userCounter++);
+      const testRunId = Date.now(); // Use test run ID to avoid conflicts between test runs
       return {
         id: `google-user-${userId}`,
-        email: `benchmark-user-${userId}@gmail.com`,
+        email: `benchmark-${testRunId}-user-${userId}@gmail.com`,
         name: `Benchmark User ${userId}`,
         emailVerified: true,
       };

@@ -14,7 +14,7 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "vitest run",
+    "test": "vitest run --pool=forks --poolOptions.forks.singleFork=true",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:performance": "vitest run --config vitest.config.performance.ts",

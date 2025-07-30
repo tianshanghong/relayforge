@@ -12,7 +12,7 @@ describe('OAuthService', () => {
       const connection = await oauthService.storeTokens({
         userId: user.id,
         provider: 'google',
-        email: 'oauth@gmail.com',
+        email: user.primaryEmail,
         scopes: ['calendar.read', 'calendar.write'],
         accessToken: 'access-token-123',
         refreshToken: 'refresh-token-456',
@@ -20,7 +20,7 @@ describe('OAuthService', () => {
       });
 
       expect(connection.provider).toBe('google');
-      expect(connection.email).toBe('oauth@gmail.com');
+      expect(connection.email).toBe(user.primaryEmail);
       expect(connection.scopes).toEqual(['calendar.read', 'calendar.write']);
       
       // Tokens should be encrypted
@@ -39,7 +39,7 @@ describe('OAuthService', () => {
       await oauthService.storeTokens({
         userId: user.id,
         provider: 'github',
-        email: 'user@github.com',
+        email: user.primaryEmail,
         scopes: ['repo'],
         accessToken: 'old-token',
         expiresAt: new Date(Date.now() + 1000),
@@ -49,7 +49,7 @@ describe('OAuthService', () => {
       const updated = await oauthService.storeTokens({
         userId: user.id,
         provider: 'github',
-        email: 'user@github.com',
+        email: user.primaryEmail,
         scopes: ['repo', 'user'],
         accessToken: 'new-token',
         refreshToken: 'new-refresh',
@@ -120,7 +120,7 @@ describe('OAuthService', () => {
       await oauthService.storeTokens({
         userId: user.id,
         provider: 'google',
-        email: 'old@gmail.com',
+        email: `${user.primaryEmail.split('@')[0]}-old@gmail.com`,
         scopes: ['calendar'],
         accessToken: 'old-token',
         expiresAt: new Date(Date.now() + 3600 * 1000),
@@ -131,7 +131,7 @@ describe('OAuthService', () => {
       await oauthService.storeTokens({
         userId: user.id,
         provider: 'google',
-        email: 'new@gmail.com',
+        email: `${user.primaryEmail.split('@')[0]}-new@gmail.com`,
         scopes: ['calendar'],
         accessToken: 'new-token',
         expiresAt: new Date(Date.now() + 3600 * 1000),

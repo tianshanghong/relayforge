@@ -2,15 +2,16 @@ import { prisma } from '../src';
 import { crypto } from '../src/crypto';
 import type { User, ServicePricing } from '@prisma/client';
 
-let userCounter = 0;
-
 export const resetTestHelpers = () => {
-  userCounter = 0;
+  // No longer needed as we don't use counters
 };
 
 export const testHelpers = {
   async createUser(email?: string, credits = 500): Promise<User> {
-    const uniqueEmail = email || `test${++userCounter}@example.com`;
+    // Use timestamp and random number to ensure uniqueness even across parallel runs
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    const uniqueEmail = email || `test-${timestamp}-${random}@example.com`;
     return prisma.user.create({
       data: {
         primaryEmail: uniqueEmail,
