@@ -185,7 +185,7 @@ export class UserService {
       return false;
     }
 
-    // Update last accessed time
+    // Update last accessed time for audit trail
     await prisma.session.update({
       where: { sessionId },
       data: { lastAccessedAt: new Date() },

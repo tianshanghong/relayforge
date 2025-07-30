@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ServerCard } from './components/ServerCard'
 import { Hero } from './components/Hero'
+import { AuthSection } from './components/AuthSection'
 
 interface MCPServer {
   name: string
@@ -29,6 +30,10 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         <Hero />
+        
+        <section className="mt-16 max-w-2xl mx-auto">
+          <AuthSection />
+        </section>
         
         <section className="mt-16">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">

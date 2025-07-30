@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "test": "turbo run test",
+    "test": "turbo run test --concurrency=1",
+    "test:parallel": "turbo run test",
     "test:integration": "turbo run test:integration",
     "test:performance": "turbo run test:performance",
     "typecheck": "turbo run typecheck",

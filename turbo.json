@@ -8,7 +8,8 @@
     "test": {
       "dependsOn": ["build"],
       "outputs": [],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"]
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"],
+      "env": ["DATABASE_URL", "ENCRYPTION_KEY"]
     },
     "lint": {
       "outputs": []

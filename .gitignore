@@ -96,4 +96,5 @@ Thumbs.db
 
 # Turbo
 .turbo/
-docs/internal/
+docs/internal/apps/oauth-service/.env
+apps/mcp-gateway/.env

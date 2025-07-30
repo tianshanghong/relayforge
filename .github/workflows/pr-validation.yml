@@ -127,7 +127,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
+          POSTGRES_DB: relayforge_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -170,11 +170,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
+
       - name: Run unit tests
         run: pnpm test
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relayforge_test
           NODE_ENV: test
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
       - name: Upload test results
         if: failure()
@@ -232,11 +246,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
       - name: Run integration tests
         run: pnpm test:integration
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relayforge_test
           NODE_ENV: test
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
   build:
     name: Build
