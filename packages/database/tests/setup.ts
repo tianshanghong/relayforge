@@ -98,7 +98,9 @@ beforeAll(async () => {
       `;
       
       console.log('Verifying tables were created...');
-      const tables = execSync(`psql "${testDatabaseUrl}" -t -c "${verifyQuery}"`, {
+      // Remove schema parameter for psql command
+      const psqlUrl = testDatabaseUrl.replace('?schema=public', '');
+      const tables = execSync(`psql "${psqlUrl}" -t -c "${verifyQuery}"`, {
         encoding: 'utf8',
       }).trim();
       
