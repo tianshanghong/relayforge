@@ -1,5 +1,11 @@
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { oauthFlowService } from '@relayforge/oauth-service/services';
+import { 
+  ServiceNotFoundError, 
+  OAuthTokenError, 
+  ProviderNotMappedError 
+} from '../errors/gateway-errors';
+import { getProviderForService } from '../config/service-providers';
 
 export interface ServiceConfig {
   name: string;
@@ -24,27 +30,20 @@ export class ServiceRouter {
   async getServiceWithAuth(
     method: string,
     userId: string
-  ): Promise<{ service: ServiceConfig; accessToken?: string } | null> {
+  ): Promise<{ service: ServiceConfig; accessToken?: string }> {
     const service = this.getServiceByMethod(method);
     if (!service) {
-      return null;
+      throw new ServiceNotFoundError(method.split('.')[0]);
     }
 
     if (!service.requiresAuth) {
       return { service };
     }
 
-    // Get OAuth token for the service
-    const providerMap: Record<string, string> = {
-      'google-calendar': 'google',
-      'google-drive': 'google',
-      'github': 'github',
-      'slack': 'slack',
-    };
-
-    const provider = providerMap[service.prefix];
+    // Get OAuth token for the service using configuration
+    const provider = getProviderForService(service.prefix);
     if (!provider) {
-      throw new Error(`No OAuth provider mapped for service: ${service.prefix}`);
+      throw new ProviderNotMappedError(service.prefix);
     }
 
     try {
@@ -53,8 +52,17 @@ export class ServiceRouter {
       
       return { service, accessToken };
     } catch (error) {
-      console.error(`Failed to get OAuth token for ${provider}:`, error);
-      return null;
+      // Provide more context about the OAuth failure
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new OAuthTokenError(
+        provider, 
+        errorMessage,
+        { 
+          service: service.prefix,
+          userId,
+          originalError: error 
+        }
+      );
     }
   }
 

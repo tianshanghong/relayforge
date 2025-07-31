@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ServiceRouter } from '../src/routing/service-router';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { oauthFlowService } from '@relayforge/oauth-service/services';
+import { 
+  ServiceNotFoundError, 
+  OAuthTokenError, 
+  ProviderNotMappedError 
+} from '../src/errors/gateway-errors';
 
 // Mock the oauth service
 vi.mock('@relayforge/oauth-service/services', () => ({
@@ -59,29 +64,34 @@ describe('Gateway Token Refresh Integration', () => {
       expect(result?.service.name).toBe('Google Calendar');
     });
 
-    it('should handle token refresh errors gracefully', async () => {
+    it('should handle token refresh errors with proper error type', async () => {
       const userId = 'test-user-id';
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Mock getValidToken to throw an error
       vi.mocked(oauthFlowService.getValidToken).mockRejectedValue(
         new Error('Token refresh failed')
       );
 
-      // Get service with auth
-      const result = await serviceRouter.getServiceWithAuth(
-        'google-calendar.list_events',
-        userId
-      );
+      // Get service with auth - should throw OAuthTokenError
+      await expect(
+        serviceRouter.getServiceWithAuth('google-calendar.list_events', userId)
+      ).rejects.toThrow('Failed to obtain OAuth token for google: Token refresh failed');
 
-      // Should return null on error
-      expect(result).toBeNull();
-      
-      // Should log the error
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to get OAuth token for google:',
-        expect.any(Error)
-      );
+      // Verify the error has proper context
+      try {
+        await serviceRouter.getServiceWithAuth('google-calendar.list_events', userId);
+      } catch (error: any) {
+        expect(error.name).toBe('OAuthTokenError');
+        expect(error.code).toBe('OAUTH_TOKEN_ERROR');
+        expect(error.statusCode).toBe(401);
+        expect(error.message).toContain('google');
+        expect(error.message).toContain('Token refresh failed');
+        expect(error.details).toMatchObject({
+          service: 'google-calendar',
+          userId,
+          originalError: expect.any(Error)
+        });
+      }
     });
 
     it('should return service without token for non-auth services', async () => {
@@ -109,12 +119,11 @@ describe('Gateway Token Refresh Integration', () => {
     });
 
     it('should handle unknown service prefixes', async () => {
-      const result = await serviceRouter.getServiceWithAuth(
-        'unknown-service.method',
-        'user-id'
-      );
+      // Should throw ServiceNotFoundError for unknown services
+      await expect(
+        serviceRouter.getServiceWithAuth('unknown-service.method', 'user-id')
+      ).rejects.toThrow('Service not found: unknown-service');
 
-      expect(result).toBeNull();
       expect(oauthFlowService.getValidToken).not.toHaveBeenCalled();
     });
 
