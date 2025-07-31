@@ -139,8 +139,12 @@ export class OAuthFlowService {
       throw new Error('No OAuth connection found');
     }
 
-    // Check if token is expired
-    if (tokens.expiresAt && tokens.expiresAt < new Date()) {
+    // Check if token is expired or will expire soon
+    const now = new Date();
+    const expiryBuffer = 5 * 60 * 1000; // 5 minutes buffer
+    const expiryThreshold = new Date(now.getTime() + expiryBuffer);
+
+    if (tokens.expiresAt && tokens.expiresAt < expiryThreshold) {
       // Check if a refresh is already in progress for this user-provider combination
       const existingRefresh = tokenRefreshLock.getRefreshPromise(userId, provider);
       if (existingRefresh) {
@@ -150,16 +154,27 @@ export class OAuthFlowService {
 
       // No refresh in progress, start a new one
       const refreshPromise = this.performTokenRefresh(userId, provider, tokens.refreshToken || null);
-      tokenRefreshLock.setRefreshPromise(userId, provider, refreshPromise);
       
-      return refreshPromise;
+      // Attach a catch handler immediately to prevent unhandled rejection warnings
+      const handledPromise = refreshPromise.then(
+        token => token,
+        error => {
+          // Re-throw the error to propagate it, but now it's been "handled"
+          throw error;
+        }
+      );
+      
+      // Store the handled promise in the lock
+      tokenRefreshLock.setRefreshPromise(userId, provider, handledPromise);
+      
+      return handledPromise;
     }
 
     return tokens.accessToken;
   }
 
   /**
-   * Perform token refresh with proper error handling
+   * Perform token refresh with proper error handling and retry logic
    */
   private async performTokenRefresh(
     userId: string,
@@ -175,9 +190,7 @@ export class OAuthFlowService {
       throw new Error(`Unknown OAuth provider: ${provider}`);
     }
 
-    const newTokens = await oauthProvider.refreshToken(refreshToken);
-
-    // Find the connection to update
+    // Find the connection once before retry loop to avoid redundant queries
     const connections = await this.dbOAuthService.getUserConnections(userId);
     const conn = connections.find(c => c.provider === provider);
     
@@ -185,16 +198,50 @@ export class OAuthFlowService {
       throw new Error('OAuth connection not found');
     }
 
-    // Update tokens
-    await this.dbOAuthService.updateTokens(
-      conn.id,
-      newTokens.accessToken,
-      newTokens.refreshToken,
-      this.calculateExpiryDate(newTokens.expiresIn)
-    );
+    // Retry logic with exponential backoff
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+    let lastError: Error | null = null;
 
-    return newTokens.accessToken;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const newTokens = await oauthProvider.refreshToken(refreshToken);
+
+        // Update tokens - handle refresh token rotation
+        await this.dbOAuthService.updateTokens(
+          conn.id,
+          newTokens.accessToken,
+          newTokens.refreshToken || refreshToken, // Use new refresh token if provided, otherwise keep existing
+          this.calculateExpiryDate(newTokens.expiresIn)
+        );
+
+        return newTokens.accessToken;
+      } catch (error) {
+        lastError = error as Error;
+        
+        // Track refresh failure attempt
+        await this.dbOAuthService.trackRefreshFailure(
+          conn.id,
+          lastError.message.substring(0, 255) // Limit error message length
+        );
+        
+        // Don't retry on non-recoverable errors
+        if (error instanceof OAuthError && (error as OAuthError & { code: string }).code === 'INVALID_GRANT') {
+          throw error;
+        }
+
+        // If not the last attempt, wait with exponential backoff
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    throw lastError || new Error('Token refresh failed after retries');
   }
+
 
 
   private calculateExpiryDate(expiresIn?: number): Date {

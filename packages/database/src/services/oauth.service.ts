@@ -157,6 +157,39 @@ export class OAuthService {
         ...(encryptedRefreshToken && { refreshToken: encryptedRefreshToken }),
         ...(expiresAt && { expiresAt }),
         lastUsedAt: new Date(),
+        // Reset refresh tracking on successful refresh
+        refreshFailureCount: 0,
+        lastRefreshError: null,
+        isHealthy: true,
+      },
+    });
+  }
+
+  /**
+   * Track failed refresh attempt
+   */
+  async trackRefreshFailure(
+    connectionId: string,
+    error: string
+  ): Promise<OAuthConnection> {
+    const connection = await prisma.oAuthConnection.findUnique({
+      where: { id: connectionId },
+    });
+
+    if (!connection) {
+      throw new Error('OAuth connection not found');
+    }
+
+    const newFailureCount = connection.refreshFailureCount + 1;
+    const isHealthy = newFailureCount < 3; // Mark unhealthy after 3 failures
+
+    return prisma.oAuthConnection.update({
+      where: { id: connectionId },
+      data: {
+        lastRefreshAttempt: new Date(),
+        refreshFailureCount: newFailureCount,
+        lastRefreshError: error,
+        isHealthy,
       },
     });
   }

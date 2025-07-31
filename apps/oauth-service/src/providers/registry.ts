@@ -36,6 +36,18 @@ export class ProviderRegistry {
   getAll(): Map<string, OAuthProvider> {
     return this.providers;
   }
+
+  /**
+   * TEST ONLY: Allows registering custom providers for testing purposes.
+   * This method should NOT be used in production code.
+   * @internal
+   */
+  _registerForTesting(name: string, provider: OAuthProvider): void {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('_registerForTesting should not be used in production');
+    }
+    this.providers.set(name, provider);
+  }
 }
 
 // Singleton instance

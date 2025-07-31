@@ -56,12 +56,20 @@ model OAuthConnection {
   expiresAt    DateTime
   connectedAt  DateTime @default(now())
   lastUsedAt   DateTime @default(now())
+  
+  // Token refresh tracking
+  lastRefreshAttempt  DateTime?
+  refreshFailureCount Int       @default(0)
+  lastRefreshError    String?
+  isHealthy           Boolean   @default(true)
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider, email])
   @@index([userId, provider])
+  @@index([isHealthy, lastUsedAt])
+  @@index([expiresAt, isHealthy])
   @@map("oauth_connections")
 }
 

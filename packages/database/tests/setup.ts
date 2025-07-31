@@ -1,8 +1,10 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
 
 const prisma = new PrismaClient();
+const packageRoot = path.resolve(__dirname, '..');
 
 // Load environment variables
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5433/relayforge_test?schema=public';
@@ -54,10 +56,63 @@ beforeAll(async () => {
     process.env.DATABASE_URL = testDatabaseUrl;
     
     // Push schema to test database
-    execSync(`npx prisma db push --skip-generate`, {
-      env: { ...process.env, DATABASE_URL: testDatabaseUrl },
-      stdio: 'inherit', // Show output for debugging
-    });
+    try {
+      console.log('Setting up test database with URL:', testDatabaseUrl);
+      console.log('Working directory:', packageRoot);
+      console.log('Schema file exists:', require('fs').existsSync(path.join(packageRoot, 'prisma', 'schema.prisma')));
+      
+      // First, generate Prisma client
+      console.log('Generating Prisma client...');
+      execSync(`npx prisma generate`, {
+        env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+        stdio: 'inherit',
+        cwd: packageRoot,
+      });
+      
+      // Then push schema to test database using migrate deploy
+      console.log('Pushing schema to test database...');
+      try {
+        // Try using migrate deploy first (for existing migrations)
+        execSync(`npx prisma migrate deploy`, {
+          env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+          stdio: 'inherit',
+          cwd: packageRoot,
+        });
+      } catch (migrateError) {
+        // If migrate fails, fall back to db push
+        console.log('Migrate deploy failed, falling back to db push:', migrateError.message);
+        execSync(`npx prisma db push --skip-generate --accept-data-loss`, {
+          env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+          stdio: 'inherit',
+          cwd: packageRoot,
+        });
+      }
+      
+      // Verify tables were created
+      const verifyQuery = `
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name IN ('users', 'sessions', 'usage', 'linked_emails', 'oauth_connections', 'service_pricing')
+        ORDER BY table_name;
+      `;
+      
+      console.log('Verifying tables were created...');
+      // Remove schema parameter for psql command
+      const psqlUrl = testDatabaseUrl.replace('?schema=public', '');
+      const tables = execSync(`psql "${psqlUrl}" -t -c "${verifyQuery}"`, {
+        encoding: 'utf8',
+      }).trim();
+      
+      console.log('Created tables:', tables.split('\n').map(t => t.trim()).filter(Boolean));
+      
+      if (!tables.includes('users') || !tables.includes('usage')) {
+        throw new Error('Tables were not created properly. Found tables: ' + tables);
+      }
+    } catch (pushError) {
+      console.error('Failed to push schema to test database:', pushError);
+      throw new Error(`Schema push failed. Ensure DATABASE_URL is correct: ${testDatabaseUrl}`);
+    }
   } catch (error) {
     console.error('Failed to setup test database:', error);
     throw error;
