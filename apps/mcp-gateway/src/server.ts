@@ -8,6 +8,7 @@ import { HelloWorldMCPServer } from './servers/hello-world';
 import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
 import { SessionValidator } from './auth/session-validator';
 import { ServiceRouter } from './routing/service-router';
+import { prisma } from '@relayforge/database';
 import { v4 as uuidv4 } from 'uuid';
 
 const fastify = Fastify({
@@ -96,9 +97,18 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
 
   const { service, accessToken } = serviceConfig;
   
+  // Get service pricing for tracking
+  const servicePricing = await prisma.servicePricing.findUnique({
+    where: { service: service.prefix },
+  });
+  const creditCost = servicePricing?.pricePerCall || 1;
+
   // Check credits
   const hasCredits = await sessionValidator.checkCredits(sessionInfo.userId, service.prefix);
   if (!hasCredits) {
+    // Track failed attempt due to insufficient credits
+    await sessionValidator.trackUsage(sessionId, sessionInfo.userId, service.prefix, 0, false);
+    
     reply.code(402).send({
       jsonrpc: '2.0',
       id: mcpRequest.id,
@@ -108,12 +118,14 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         data: {
           service: service.name,
           credits: sessionInfo.credits,
+          required: creditCost,
         },
       },
     });
     return;
   }
 
+  let success = false;
   try {
     // Set access token if needed
     if (accessToken && service.prefix === 'google-calendar') {
@@ -124,11 +136,14 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
     const response = await service.adapter.handleHttpRequest(sessionId, mcpRequest);
     
     if (response) {
+      success = !response.error;
       reply.code(200).send(response);
     } else {
+      success = true;
       reply.code(202).send();
     }
   } catch (error) {
+    success = false;
     reply.code(500).send({
       jsonrpc: '2.0',
       id: mcpRequest.id,
@@ -138,6 +153,15 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         data: error instanceof Error ? error.message : String(error),
       },
     });
+  } finally {
+    // Track usage for billing
+    await sessionValidator.trackUsage(
+      sessionId,
+      sessionInfo.userId,
+      service.prefix,
+      creditCost,
+      success
+    );
   }
 });
 

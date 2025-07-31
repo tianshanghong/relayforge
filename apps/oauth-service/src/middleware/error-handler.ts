@@ -35,6 +35,35 @@ export async function errorHandler(
     });
   }
 
+  // Handle standard Error objects with specific messages
+  if (error instanceof Error) {
+    // Map specific error messages to status codes
+    if (error.message === 'User ID is required') {
+      return reply.status(400).send({
+        error: error.message,
+        statusCode: 400,
+      });
+    }
+    if (error.message === 'User not found' || error.message === 'Session not found') {
+      return reply.status(404).send({
+        error: error.message,
+        statusCode: 404,
+      });
+    }
+    if (error.message.includes('Unauthorized')) {
+      return reply.status(403).send({
+        error: error.message,
+        statusCode: 403,
+      });
+    }
+    if (error.message === 'Session has expired') {
+      return reply.status(401).send({
+        error: error.message,
+        statusCode: 401,
+      });
+    }
+  }
+
   // Default error response
   const statusCode = error.statusCode || 500;
   const message = statusCode === 500 ? 'Internal Server Error' : error.message;

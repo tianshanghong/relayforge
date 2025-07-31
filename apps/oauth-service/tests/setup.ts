@@ -57,3 +57,43 @@ afterEach(async () => {
     console.warn('Database cleanup failed in afterEach:', error);
   }
 });
+
+// Helper function to build test app
+export async function build() {
+  const { default: Fastify } = await import('fastify');
+  const { default: cors } = await import('@fastify/cors');
+  const { default: cookie } = await import('@fastify/cookie');
+  const { authRoutes } = await import('../src/routes/auth.routes');
+  const { accountRoutes } = await import('../src/routes/account.routes');
+  const { sessionRoutes } = await import('../src/routes/session.routes');
+  const { errorHandler } = await import('../src/middleware/error-handler');
+
+  const app = Fastify({
+    logger: false, // Disable logging in tests
+  });
+
+  // Register plugins
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+  });
+
+  await app.register(cookie, {
+    secret: 'test-secret-key-for-cookies-minimum-32-chars',
+  });
+
+  // Set error handler
+  app.setErrorHandler(errorHandler);
+
+  // Register routes
+  await app.register(authRoutes, { prefix: '/oauth' });
+  await app.register(accountRoutes, { prefix: '/api/account' });
+  await app.register(sessionRoutes);
+
+  // Health check
+  app.get('/health', async () => {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
+  return app;
+}
