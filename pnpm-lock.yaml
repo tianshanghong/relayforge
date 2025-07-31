@@ -75,6 +75,9 @@ importers:
       '@relayforge/mcp-adapter':
         specifier: workspace:*
         version: link:../../packages/mcp-adapter
+      '@relayforge/oauth-service':
+        specifier: workspace:*
+        version: link:../oauth-service
       '@relayforge/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -109,6 +112,12 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.8.3
+      vite:
+        specifier: ^7.0.6
+        version: 7.0.6(@types/node@20.19.9)(jiti@1.21.7)(tsx@4.20.3)(yaml@2.8.0)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@20.19.9)(jiti@1.21.7)(tsx@4.20.3)(yaml@2.8.0)
 
   apps/oauth-service:
     dependencies:
