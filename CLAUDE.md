@@ -86,8 +86,16 @@ packages/oauth-service/
 │   ├── github.ts
 │   └── slack.ts
 ├── token-manager.ts    # Encrypted OAuth token storage
-└── account-linker.ts   # Email → Account mapping
+├── account-linker.ts   # Email → Account mapping
+└── token-refresh.ts    # Automatic token refresh with retry logic
 ```
+
+#### OAuth Token Management
+- **Automatic Refresh**: Tokens refreshed 5 minutes before expiry via `getValidToken()`
+- **Retry Logic**: Exponential backoff with 3 attempts for transient failures
+- **Concurrent Protection**: Prevents multiple simultaneous refresh attempts
+- **Health Tracking**: Marks connections unhealthy after 3 consecutive failures
+- **Token Rotation**: Supports providers that rotate refresh tokens
 
 ### 2. MCP Gateway
 ```typescript
@@ -98,12 +106,15 @@ POST /mcp/{session-id}
   "params": { ... }
 }
 
-// Gateway routes internally
+// Gateway routes internally with configurable provider mapping
 Router: {
-  "google_calendar.*" → Google Calendar MCP Server
-  "github.*" → GitHub MCP Server  
-  "openai.*" → OpenAI MCP Server
+  "google_calendar.*" → Google Calendar MCP Server (OAuth: google)
+  "github.*" → GitHub MCP Server (OAuth: github)
+  "openai.*" → OpenAI MCP Server (API Key: client-provided)
 }
+
+// Provider mapping in config/service-providers.ts
+// Extensible for new services without code changes
 ```
 
 ### 3. Service Discovery
@@ -255,7 +266,7 @@ class MCPGateway {
     
     // Handle auth
     if (isOAuthService(service)) {
-      const token = await oauthService.getToken(user.id, service);
+      const token = await oauthService.getValidToken(user.id, service);
       request.headers['Authorization'] = `Bearer ${token}`;
     } else if (isApiKeyService(service)) {
       if (!request.headers[`X-${service}-Key`]) {
