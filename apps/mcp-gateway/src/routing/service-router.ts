@@ -1,5 +1,11 @@
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
-import { OAuthService } from '@relayforge/database';
+import { oauthFlowService } from '@relayforge/oauth-service/services';
+import { 
+  ServiceNotFoundError, 
+  OAuthTokenError, 
+  ProviderNotMappedError 
+} from '../errors/gateway-errors';
+import { getProviderForService } from '../config/service-providers';
 
 export interface ServiceConfig {
   name: string;
@@ -10,11 +16,6 @@ export interface ServiceConfig {
 
 export class ServiceRouter {
   private services: Map<string, ServiceConfig> = new Map();
-  private oauthService: OAuthService;
-
-  constructor() {
-    this.oauthService = new OAuthService();
-  }
 
   registerService(config: ServiceConfig) {
     this.services.set(config.prefix, config);
@@ -29,39 +30,39 @@ export class ServiceRouter {
   async getServiceWithAuth(
     method: string,
     userId: string
-  ): Promise<{ service: ServiceConfig; accessToken?: string } | null> {
+  ): Promise<{ service: ServiceConfig; accessToken?: string }> {
     const service = this.getServiceByMethod(method);
     if (!service) {
-      return null;
+      throw new ServiceNotFoundError(method.split('.')[0]);
     }
 
     if (!service.requiresAuth) {
       return { service };
     }
 
-    // Get OAuth token for the service
-    const providerMap: Record<string, string> = {
-      'google-calendar': 'google',
-      'google-drive': 'google',
-      'github': 'github',
-      'slack': 'slack',
-    };
-
-    const provider = providerMap[service.prefix];
+    // Get OAuth token for the service using configuration
+    const provider = getProviderForService(service.prefix);
     if (!provider) {
-      throw new Error(`No OAuth provider mapped for service: ${service.prefix}`);
+      throw new ProviderNotMappedError(service.prefix);
     }
 
     try {
-      const accessToken = await this.oauthService.getTokens(userId, provider);
-      if (!accessToken) {
-        throw new Error(`No OAuth connection found for provider: ${provider}`);
-      }
-
-      return { service, accessToken: accessToken.accessToken };
+      // Use getValidToken which handles automatic refresh
+      const accessToken = await oauthFlowService.getValidToken(userId, provider);
+      
+      return { service, accessToken };
     } catch (error) {
-      console.error(`Failed to get OAuth token for ${provider}:`, error);
-      return null;
+      // Provide more context about the OAuth failure
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new OAuthTokenError(
+        provider, 
+        errorMessage,
+        { 
+          service: service.prefix,
+          userId,
+          originalError: error 
+        }
+      );
     }
   }
 
