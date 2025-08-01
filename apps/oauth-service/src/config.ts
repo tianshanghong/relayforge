@@ -35,6 +35,9 @@ const configSchema = z.object({
   
   // Session duration
   SESSION_DURATION_DAYS: z.string().default('30').transform(Number),
+  
+  // Admin authentication (optional - only required for admin endpoints)
+  ADMIN_KEY: z.string().min(32).optional(),
 });
 
 // Load and validate config
@@ -56,6 +59,7 @@ const env = {
   SLACK_REDIRECT_URI: process.env.SLACK_REDIRECT_URI,
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
   SESSION_DURATION_DAYS: process.env.SESSION_DURATION_DAYS,
+  ADMIN_KEY: process.env.ADMIN_KEY,
 };
 
 export const config = configSchema.parse(env);

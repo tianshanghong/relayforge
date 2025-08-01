@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { SessionService } from '../services';
+import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 export interface SessionCreateBody {
   userId?: string; // Optional - can be extracted from auth token
@@ -21,27 +22,24 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   // Create a new session
   fastify.post<{
     Body: SessionCreateBody;
-  }>('/api/sessions', async (request, reply) => {
+  }>('/api/sessions', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
-      // In a real implementation, userId would come from authenticated user
-      // For now, we'll accept it in the body or use a test user
-      const userId = request.body.userId || request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
+      const body = request.body as SessionCreateBody;
       const metadata = {
         userAgent: request.headers['user-agent'],
         ipAddress: request.ip,
         origin: request.headers.origin as string,
-        ...request.body.metadata,
+        ...body.metadata,
       };
 
       const session = await sessionService.createSession({
         userId,
         metadata,
-        expiresIn: request.body.expiresIn,
+        expiresIn: body.expiresIn,
       });
 
       reply.code(201).send({
@@ -55,14 +53,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   });
 
   // Get all sessions for authenticated user
-  fastify.get('/api/sessions', async (request, reply) => {
+  fastify.get('/api/sessions', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
-      // In a real implementation, userId would come from authenticated user
-      const userId = request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
       const sessions = await sessionService.getUserSessions(userId);
 
@@ -77,13 +72,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   });
 
   // Get session statistics
-  fastify.get('/api/sessions/stats', async (request, reply) => {
+  fastify.get('/api/sessions/stats', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
-      const userId = request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
       const stats = await sessionService.getSessionStats(userId);
 
@@ -127,19 +120,18 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   fastify.post<{
     Params: { sessionId: string };
     Body: SessionRefreshBody;
-  }>('/api/sessions/:sessionId/refresh', async (request, reply) => {
+  }>('/api/sessions/:sessionId/refresh', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
       const { sessionId } = request.params;
-      const userId = request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
+      const body = request.body as SessionRefreshBody;
       const session = await sessionService.refreshSession(
         userId,
         sessionId,
-        request.body.expiresIn
+        body.expiresIn
       );
 
       reply.send({
@@ -155,14 +147,12 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   // Revoke a specific session
   fastify.delete<{
     Params: { sessionId: string };
-  }>('/api/sessions/:sessionId', async (request, reply) => {
+  }>('/api/sessions/:sessionId', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
       const { sessionId } = request.params;
-      const userId = request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
       await sessionService.revokeSession(userId, sessionId);
 
@@ -177,13 +167,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   });
 
   // Revoke all sessions for user
-  fastify.delete('/api/sessions', async (request, reply) => {
+  fastify.delete('/api/sessions', {
+    preHandler: authenticateUser
+  }, async (request, reply) => {
     try {
-      const userId = request.headers['x-user-id'] as string;
-      
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
+      const userId = request.userId!;
 
       const count = await sessionService.revokeAllSessions(userId);
 
@@ -199,9 +187,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   });
 
   // Cleanup expired sessions (admin endpoint)
-  fastify.post('/api/sessions/cleanup', async (request, reply) => {
+  fastify.post('/api/sessions/cleanup', {
+    preHandler: requireAdmin
+  }, async (request, reply) => {
     try {
-      // In production, this should be protected by admin authentication
       const count = await sessionService.cleanupExpiredSessions();
 
       reply.send({

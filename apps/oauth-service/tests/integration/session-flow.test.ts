@@ -3,6 +3,8 @@ process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret-min
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-minimum-32-characters-long';
 process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'test-google-client-secret';
+process.env.ADMIN_KEY = process.env.ADMIN_KEY || 'test-admin-key-minimum-32-characters-long';
+process.env.NODE_ENV = 'test';
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { build } from '../setup';
@@ -43,7 +45,7 @@ describe('Session Management Integration', () => {
   });
 
   describe('Session CRUD Operations', () => {
-    it('should create a new session', async () => {
+    it.skip('should create a new session (disabled until JWT auth)', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/sessions',
@@ -71,7 +73,7 @@ describe('Session Management Integration', () => {
       expect(body.data.sessionUrl).toContain('/mcp/');
     });
 
-    it('should list user sessions', async () => {
+    it.skip('should list user sessions (disabled until JWT auth)', async () => {
       // First create a session
       const createResp = await app.inject({
         method: 'POST',
@@ -98,7 +100,7 @@ describe('Session Management Integration', () => {
       expect(body.data.some((s: any) => s.sessionId === sessionId)).toBe(true);
     });
 
-    it('should get session statistics', async () => {
+    it.skip('should get session statistics (disabled until JWT auth)', async () => {
       // First create a session
       await app.inject({
         method: 'POST',
@@ -126,18 +128,18 @@ describe('Session Management Integration', () => {
     });
 
     it('should validate a session', async () => {
-      // First create a session
-      const createResp = await app.inject({
-        method: 'POST',
-        url: '/api/sessions',
-        headers: { 'x-user-id': testUserId },
-        payload: {},
+      // Create a session directly in the database since API is disabled
+      const session = await prisma.session.create({
+        data: {
+          sessionId: 'test-session-123',
+          userId: testUserId,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
       });
-      const { sessionId } = JSON.parse(createResp.body).data;
 
       const response = await app.inject({
         method: 'GET',
-        url: `/api/sessions/${sessionId}/validate`,
+        url: `/api/sessions/${session.sessionId}/validate`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -148,7 +150,7 @@ describe('Session Management Integration', () => {
       expect(body.data.userId).toBe(testUserId);
     });
 
-    it('should refresh/extend a session', async () => {
+    it.skip('should refresh/extend a session (disabled until JWT auth)', async () => {
       // First create a session
       const createResp = await app.inject({
         method: 'POST',
@@ -195,7 +197,7 @@ describe('Session Management Integration', () => {
       expect(body.error).toBe('Session not found or expired');
     });
 
-    it('should revoke a session', async () => {
+    it.skip('should revoke a session (disabled until JWT auth)', async () => {
       // First create a session
       const createResp = await app.inject({
         method: 'POST',
@@ -227,23 +229,20 @@ describe('Session Management Integration', () => {
   });
 
   describe('Session Security', () => {
-    it('should require user ID for session creation', async () => {
+    it('should return 503 for all authenticated endpoints', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/sessions',
         payload: {},
       });
 
-      if (response.statusCode !== 400) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(503);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('User ID is required');
+      expect(body.error).toBe('Service Unavailable');
+      expect(body.message).toContain('JWT authentication is coming soon');
     });
 
-    it('should prevent users from revoking other users sessions', async () => {
+    it.skip('should prevent users from revoking other users sessions (disabled until JWT auth)', async () => {
       // Create another user
       const otherUser = await prisma.user.create({
         data: {
@@ -301,6 +300,9 @@ describe('Session Management Integration', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/sessions/cleanup',
+        headers: {
+          'x-admin-key': process.env.ADMIN_KEY || 'test-admin-key-minimum-32-characters-long',
+        },
       });
 
       expect(response.statusCode).toBe(200);

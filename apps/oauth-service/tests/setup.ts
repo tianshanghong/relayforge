@@ -6,6 +6,7 @@ process.env.COOKIE_SECRET = 'test-cookie-secret-minimum-32-characters-long';
 process.env.JWT_SECRET = 'test-jwt-secret-minimum-32-characters-long';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+process.env.ADMIN_KEY = 'test-admin-key-minimum-32-characters-long';
 
 // Ensure DATABASE_URL is set for tests
 if (!process.env.DATABASE_URL) {
