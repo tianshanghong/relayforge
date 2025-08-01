@@ -26,7 +26,7 @@ export async function authenticateUser(
   reply.code(503).send({
     error: 'Service Unavailable',
     message: 'Session management API is not yet available. JWT authentication is coming soon.',
-    docs: 'https://docs.relayforge.com/api/authentication'
+    docs: 'https://docs.relayforge.xyz/api/authentication'
   });
 }
 

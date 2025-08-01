@@ -15,7 +15,7 @@ All other endpoints return `503 Service Unavailable` until JWT authentication is
 ## Base URL
 
 ```
-https://api.relayforge.com/api/sessions
+https://api.relayforge.xyz/api/sessions
 ```
 
 ## Authentication
@@ -292,7 +292,7 @@ Once a session is created, the `sessionUrl` can be used as the MCP server URL in
 {
   "mcpServers": {
     "relayforge": {
-      "url": "https://relayforge.com/mcp/abc123xyz..."
+      "url": "https://relayforge.xyz/mcp/abc123xyz..."
     }
   }
 }
