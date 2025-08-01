@@ -47,7 +47,12 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
   // Validate session
   const sessionInfo = await sessionValidator.validateSession(sessionId);
   if (!sessionInfo) {
-    reply.code(401).send({ error: 'Invalid or expired session' });
+    reply.code(401).send({ 
+      error: 'Invalid or expired session',
+      message: 'Your RelayForge session has expired or is invalid.',
+      help: 'Visit https://relayforge.xyz/dashboard to create a new session',
+      code: 'SESSION_EXPIRED'
+    });
     return;
   }
 
@@ -96,9 +101,26 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
 
   const { service, accessToken } = serviceConfig;
   
-  // Check credits
+  // Get service pricing
+  const pricing = await sessionValidator.getServicePricing(service.prefix);
+  if (!pricing) {
+    reply.code(503).send({
+      jsonrpc: '2.0',
+      id: mcpRequest.id,
+      error: {
+        code: -32000,
+        message: `Service ${service.name} is not available`,
+      },
+    });
+    return;
+  }
+
+  // Check credits (without deducting)
   const hasCredits = await sessionValidator.checkCredits(sessionInfo.userId, service.prefix);
   if (!hasCredits) {
+    // Track failed attempt due to insufficient credits
+    await sessionValidator.trackUsage(sessionId, sessionInfo.userId, service.prefix, 0, false);
+    
     reply.code(402).send({
       jsonrpc: '2.0',
       id: mcpRequest.id,
@@ -107,13 +129,16 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         message: 'Insufficient credits',
         data: {
           service: service.name,
-          credits: sessionInfo.credits,
+          userCredits: sessionInfo.credits,
+          requiredCredits: pricing.pricePerCall,
+          shortBy: pricing.pricePerCall - sessionInfo.credits,
         },
       },
     });
     return;
   }
 
+  let success = false;
   try {
     // Set access token if needed
     if (accessToken && service.prefix === 'google-calendar') {
@@ -124,11 +149,29 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
     const response = await service.adapter.handleHttpRequest(sessionId, mcpRequest);
     
     if (response) {
+      success = !response.error;
       reply.code(200).send(response);
     } else {
+      success = true;
       reply.code(202).send();
     }
+
+    // Charge credits only on successful execution
+    if (success) {
+      const charged = await sessionValidator.chargeCredits(sessionInfo.userId, service.prefix);
+      if (!charged) {
+        // This shouldn't happen since we checked credits earlier,
+        // but log it if it does
+        request.log.error({
+          msg: 'Failed to charge credits after successful execution',
+          userId: sessionInfo.userId,
+          service: service.prefix,
+          sessionId,
+        });
+      }
+    }
   } catch (error) {
+    success = false;
     reply.code(500).send({
       jsonrpc: '2.0',
       id: mcpRequest.id,
@@ -138,6 +181,15 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         data: error instanceof Error ? error.message : String(error),
       },
     });
+  } finally {
+    // Track usage for billing and analytics
+    await sessionValidator.trackUsage(
+      sessionId,
+      sessionInfo.userId,
+      service.prefix,
+      pricing.pricePerCall,
+      success
+    );
   }
 });
 
@@ -181,7 +233,18 @@ fastify.register(async function (fastify) {
     // Validate session
     const sessionInfo = await sessionValidator.validateSession(sessionId);
     if (!sessionInfo) {
-      socket.close(1008, 'Invalid or expired session');
+      socket.send(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32002,
+          message: "Session expired or invalid",
+          data: {
+            help: "Visit https://relayforge.xyz/dashboard to create a new session",
+            code: "SESSION_EXPIRED"
+          }
+        }
+      }));
+      socket.close(1008, 'Session expired - visit https://relayforge.xyz/dashboard');
       return;
     }
 

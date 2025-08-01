@@ -1,6 +1,13 @@
 // Set environment variables before any imports that might use them
 process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
+// Set required environment variables for tests
+process.env.COOKIE_SECRET = 'test-cookie-secret-minimum-32-characters-long';
+process.env.JWT_SECRET = 'test-jwt-secret-minimum-32-characters-long';
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+process.env.ADMIN_KEY = 'test-admin-key-minimum-32-characters-long';
+
 // Ensure DATABASE_URL is set for tests
 if (!process.env.DATABASE_URL) {
   // Default to local development database
@@ -57,3 +64,43 @@ afterEach(async () => {
     console.warn('Database cleanup failed in afterEach:', error);
   }
 });
+
+// Helper function to build test app
+export async function build() {
+  const { default: Fastify } = await import('fastify');
+  const { default: cors } = await import('@fastify/cors');
+  const { default: cookie } = await import('@fastify/cookie');
+  const { authRoutes } = await import('../src/routes/auth.routes');
+  const { accountRoutes } = await import('../src/routes/account.routes');
+  const { sessionRoutes } = await import('../src/routes/session.routes');
+  const { errorHandler } = await import('../src/middleware/error-handler');
+
+  const app = Fastify({
+    logger: false, // Disable logging in tests
+  });
+
+  // Register plugins
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+  });
+
+  await app.register(cookie, {
+    secret: 'test-secret-key-for-cookies-minimum-32-chars',
+  });
+
+  // Set error handler
+  app.setErrorHandler(errorHandler);
+
+  // Register routes
+  await app.register(authRoutes, { prefix: '/oauth' });
+  await app.register(accountRoutes, { prefix: '/api/account' });
+  await app.register(sessionRoutes);
+
+  // Health check
+  app.get('/health', async () => {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
+  return app;
+}

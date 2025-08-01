@@ -5,8 +5,10 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import { authRoutes } from './routes/auth.routes';
 import { accountRoutes } from './routes/account.routes';
+import { sessionRoutes } from './routes/session.routes';
 import { config } from './config';
 import { errorHandler } from './middleware/error-handler';
+import { sessionCleanupJob } from './jobs/session-cleanup';
 
 async function start() {
   const fastify = Fastify({
@@ -60,6 +62,7 @@ async function start() {
   // Register routes
   await fastify.register(authRoutes, { prefix: '/oauth' });
   await fastify.register(accountRoutes, { prefix: '/api/account' });
+  await fastify.register(sessionRoutes);
 
   // Health check
   fastify.get('/health', async () => {
@@ -73,10 +76,26 @@ async function start() {
       host: '0.0.0.0',
     });
     fastify.log.info(`OAuth service listening on port ${config.PORT}`);
+    
+    // Start background jobs
+    sessionCleanupJob.start();
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 }
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received');
+  sessionCleanupJob.stop();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received');
+  sessionCleanupJob.stop();
+  process.exit(0);
+});
 
 start();

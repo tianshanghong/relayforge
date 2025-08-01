@@ -101,3 +101,4 @@ apps/mcp-gateway/.env
 
 # Local development documentation
 CLAUDE.local.md
+docs/internal/
