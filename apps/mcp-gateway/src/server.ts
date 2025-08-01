@@ -8,7 +8,6 @@ import { HelloWorldMCPServer } from './servers/hello-world';
 import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
 import { SessionValidator } from './auth/session-validator';
 import { ServiceRouter } from './routing/service-router';
-// import { prisma } from '@relayforge/database';  // Now using sessionValidator methods
 import { v4 as uuidv4 } from 'uuid';
 
 const fastify = Fastify({
