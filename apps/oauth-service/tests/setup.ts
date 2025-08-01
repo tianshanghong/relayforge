@@ -1,6 +1,12 @@
 // Set environment variables before any imports that might use them
 process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
+// Set required environment variables for tests
+process.env.COOKIE_SECRET = 'test-cookie-secret-minimum-32-characters-long';
+process.env.JWT_SECRET = 'test-jwt-secret-minimum-32-characters-long';
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+
 // Ensure DATABASE_URL is set for tests
 if (!process.env.DATABASE_URL) {
   // Default to local development database

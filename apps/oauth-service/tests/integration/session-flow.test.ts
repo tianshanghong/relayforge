@@ -1,3 +1,9 @@
+// Set required environment variables before imports
+process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret-minimum-32-characters-long';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-minimum-32-characters-long';
+process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'test-google-client-id';
+process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'test-google-client-secret';
+
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { build } from '../setup';
 import { prisma } from '@relayforge/database';
