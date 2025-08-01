@@ -8,7 +8,7 @@ import { HelloWorldMCPServer } from './servers/hello-world';
 import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
 import { SessionValidator } from './auth/session-validator';
 import { ServiceRouter } from './routing/service-router';
-import { prisma } from '@relayforge/database';
+// import { prisma } from '@relayforge/database';  // Now using sessionValidator methods
 import { v4 as uuidv4 } from 'uuid';
 
 const fastify = Fastify({
@@ -97,13 +97,21 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
 
   const { service, accessToken } = serviceConfig;
   
-  // Get service pricing for tracking
-  const servicePricing = await prisma.servicePricing.findUnique({
-    where: { service: service.prefix },
-  });
-  const creditCost = servicePricing?.pricePerCall || 1;
+  // Get service pricing
+  const pricing = await sessionValidator.getServicePricing(service.prefix);
+  if (!pricing) {
+    reply.code(503).send({
+      jsonrpc: '2.0',
+      id: mcpRequest.id,
+      error: {
+        code: -32000,
+        message: `Service ${service.name} is not available`,
+      },
+    });
+    return;
+  }
 
-  // Check credits
+  // Check credits (without deducting)
   const hasCredits = await sessionValidator.checkCredits(sessionInfo.userId, service.prefix);
   if (!hasCredits) {
     // Track failed attempt due to insufficient credits
@@ -117,8 +125,9 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         message: 'Insufficient credits',
         data: {
           service: service.name,
-          credits: sessionInfo.credits,
-          required: creditCost,
+          userCredits: sessionInfo.credits,
+          requiredCredits: pricing.pricePerCall,
+          shortBy: pricing.pricePerCall - sessionInfo.credits,
         },
       },
     });
@@ -142,6 +151,21 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
       success = true;
       reply.code(202).send();
     }
+
+    // Charge credits only on successful execution
+    if (success) {
+      const charged = await sessionValidator.chargeCredits(sessionInfo.userId, service.prefix);
+      if (!charged) {
+        // This shouldn't happen since we checked credits earlier,
+        // but log it if it does
+        request.log.error({
+          msg: 'Failed to charge credits after successful execution',
+          userId: sessionInfo.userId,
+          service: service.prefix,
+          sessionId,
+        });
+      }
+    }
   } catch (error) {
     success = false;
     reply.code(500).send({
@@ -154,12 +178,12 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
       },
     });
   } finally {
-    // Track usage for billing
+    // Track usage for billing and analytics
     await sessionValidator.trackUsage(
       sessionId,
       sessionInfo.userId,
       service.prefix,
-      creditCost,
+      pricing.pricePerCall,
       success
     );
   }

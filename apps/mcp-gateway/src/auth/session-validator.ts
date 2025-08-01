@@ -112,7 +112,15 @@ export class SessionValidator {
   }
 
   async checkCredits(userId: string, service: string): Promise<boolean> {
+    return this.userService.checkCredits(userId, service);
+  }
+
+  async chargeCredits(userId: string, service: string): Promise<boolean> {
     return this.userService.deductCredits(userId, service);
+  }
+
+  async getServicePricing(service: string): Promise<{ pricePerCall: number } | null> {
+    return this.userService.getServicePricing(service);
   }
 
   private async updateLastAccessed(sessionId: string): Promise<void> {

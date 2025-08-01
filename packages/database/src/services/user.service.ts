@@ -235,7 +235,50 @@ export class UserService {
   }
 
   /**
+   * Get service pricing information
+   */
+  async getServicePricing(service: string): Promise<{ pricePerCall: number } | null> {
+    const pricing = await prisma.servicePricing.findUnique({
+      where: { service },
+    });
+
+    if (!pricing || !pricing.active) {
+      return null;
+    }
+
+    return {
+      pricePerCall: pricing.pricePerCall,
+    };
+  }
+
+  /**
+   * Check if user has enough credits for a service call (does not deduct)
+   */
+  async checkCredits(userId: string, service: string): Promise<boolean> {
+    // Get service pricing
+    const pricing = await prisma.servicePricing.findUnique({
+      where: { service },
+    });
+
+    if (!pricing || !pricing.active) {
+      return false; // Service not available
+    }
+
+    // Check user credits
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return false;
+    }
+
+    return user.credits >= pricing.pricePerCall;
+  }
+
+  /**
    * Check and deduct credits for a service call
+   * @returns true if credits were successfully deducted, false if insufficient credits
    */
   async deductCredits(userId: string, service: string): Promise<boolean> {
     // Get service pricing
