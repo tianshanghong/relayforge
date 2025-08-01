@@ -5,7 +5,6 @@ export interface SessionInfo {
   credits: number;
   sessionId: string;
   expiresAt: Date;
-  warning?: string;
   // Note: We don't cache email or other mutable user data to avoid stale information
 }
 
@@ -63,17 +62,11 @@ export class SessionValidator {
         return null;
       }
 
-      // Add warning if session expires soon
-      const hoursUntilExpiry = (session.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
-      
       const info: SessionInfo = {
         userId: session.user.id,
         credits: session.user.credits,
         sessionId: session.sessionId,
         expiresAt: session.expiresAt,
-        ...(hoursUntilExpiry < 24 && {
-          warning: `Session expires in ${Math.floor(hoursUntilExpiry)} hours. Visit https://relayforge.xyz/dashboard to extend.`
-        })
       };
 
       // Update last accessed time asynchronously
