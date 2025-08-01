@@ -2,10 +2,10 @@ import { UserService, prisma } from '@relayforge/database';
 
 export interface SessionInfo {
   userId: string;
-  email: string;
   credits: number;
   sessionId: string;
   expiresAt: Date;
+  // Note: We don't cache email or other mutable user data to avoid stale information
 }
 
 export interface SessionValidationResult {
@@ -64,7 +64,6 @@ export class SessionValidator {
 
       const info: SessionInfo = {
         userId: session.user.id,
-        email: session.user.primaryEmail,
         credits: session.user.credits,
         sessionId: session.sessionId,
         expiresAt: session.expiresAt,
