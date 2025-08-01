@@ -47,7 +47,12 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
   // Validate session
   const sessionInfo = await sessionValidator.validateSession(sessionId);
   if (!sessionInfo) {
-    reply.code(401).send({ error: 'Invalid or expired session' });
+    reply.code(401).send({ 
+      error: 'Invalid or expired session',
+      message: 'Your RelayForge session has expired or is invalid.',
+      help: 'Visit https://relayforge.xyz/dashboard to create a new session',
+      code: 'SESSION_EXPIRED'
+    });
     return;
   }
 
@@ -228,7 +233,18 @@ fastify.register(async function (fastify) {
     // Validate session
     const sessionInfo = await sessionValidator.validateSession(sessionId);
     if (!sessionInfo) {
-      socket.close(1008, 'Invalid or expired session');
+      socket.send(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32002,
+          message: "Session expired or invalid",
+          data: {
+            help: "Visit https://relayforge.xyz/dashboard to create a new session",
+            code: "SESSION_EXPIRED"
+          }
+        }
+      }));
+      socket.close(1008, 'Session expired - visit https://relayforge.xyz/dashboard');
       return;
     }
 

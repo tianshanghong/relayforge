@@ -145,7 +145,7 @@ export class SessionService {
     }
 
     if (session.expiresAt < new Date()) {
-      throw new Error('Session has expired');
+      throw new Error('Session has expired. Please create a new session at https://relayforge.xyz/dashboard');
     }
 
     // Calculate new expiry
