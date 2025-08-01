@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { timingSafeEqual } from 'crypto';
 
 /**
  * Authentication middleware placeholder until JWT implementation
@@ -59,8 +60,20 @@ export async function requireAdmin(
     return;
   }
 
-  // Timing-safe comparison
-  if (!timingSafeEqual(adminKey, validAdminKey)) {
+  // Timing-safe comparison using Node.js built-in
+  const keyBuffer = Buffer.from(adminKey);
+  const validKeyBuffer = Buffer.from(validAdminKey);
+  
+  // Keys must be same length for timingSafeEqual
+  if (keyBuffer.length !== validKeyBuffer.length) {
+    reply.code(403).send({
+      error: 'Forbidden',
+      message: 'Invalid admin key'
+    });
+    return;
+  }
+  
+  if (!timingSafeEqual(keyBuffer, validKeyBuffer)) {
     reply.code(403).send({
       error: 'Forbidden',
       message: 'Invalid admin key'
@@ -75,20 +88,4 @@ export async function requireAdmin(
     ip: request.ip,
     userAgent: request.headers['user-agent']
   });
-}
-
-/**
- * Timing-safe string comparison to prevent timing attacks
- */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  
-  return result === 0;
 }
