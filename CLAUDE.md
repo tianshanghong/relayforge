@@ -58,23 +58,26 @@ Primary Account: alice@gmail.com
 └── Balance: $3.50 (350 credits)
 ```
 
-### Account Linking Flow
+### Account Creation & Session Flow
 
-1. **First Service Connection**:
-   - User connects Google with alice@gmail.com
-   - System creates primary account
-   - Assigns $5.00 free credits
+1. **Initial OAuth Authentication**:
+   - User authenticates via OAuth (Google/GitHub/Slack)
+   - System creates/finds user account based on email
+   - User account MUST exist before session creation
+   - System generates secure session ID linked to user
+   - Returns MCP URL: `https://relayforge.com/mcp/{session-id}`
 
-2. **Adding Different Email Service**:
-   - User connects GitHub (uses alice@company.com)
-   - System detects new email
-   - Prompts: "Link to existing account alice@gmail.com?"
-   - User confirms → Same account, same balance
+2. **Automatic Account Merging** (Prevents Credit Abuse):
+   - When authenticated user adds new OAuth provider
+   - Different email automatically linked to current account
+   - NO user prompt (prevents creating multiple accounts for credits)
+   - EmailUserMapping prevents that email from creating new accounts
 
-3. **Account Discovery**:
-   - Checks if OAuth email exists in any linked account
-   - Prevents duplicate accounts
-   - Maintains single billing relationship
+3. **Account Structure**:
+   - Each unique email can only create ONE account ever
+   - Multiple emails can be linked to single account
+   - Credits ($5) only given on first account creation
+   - All linked emails share same balance and services
 
 ## Service Architecture
 
@@ -236,6 +239,74 @@ interface Usage {
   credits: number;          // Cost in credits
   success: boolean;         // For basic troubleshooting
   // Minimal tracking - no detailed errors or methods
+}
+```
+
+## Authentication & Session Flow
+
+```typescript
+// Complete user journey from OAuth to MCP usage
+async function userAuthenticationFlow() {
+  // 1. User initiates OAuth
+  const oauthResult = await completeOAuth(provider, code);
+  const email = oauthResult.email;
+  
+  // 2. User account creation/lookup
+  const existingMapping = await findEmailUserMapping(email);
+  
+  let user;
+  if (!existingMapping) {
+    // First time this email has been seen
+    user = await createUser({
+      primaryEmail: email,
+      credits: 500, // $5.00 free credits
+      linkedEmails: [{ email, provider }],
+      oauthServices: [{ provider, email, scopes }]
+    });
+    await createEmailUserMapping(email, user.id);
+  } else {
+    // Email already linked to an account
+    user = await getUser(existingMapping.userId);
+    // No new credits given
+  }
+  
+  // 3. Session creation (AFTER user exists)
+  const session = await createSession({
+    userId: user.id,
+    expiresIn: 30 // days
+  });
+  
+  // 4. Return MCP URL to user
+  return {
+    sessionUrl: `https://relayforge.com/mcp/${session.id}`,
+    message: existingMapping ? "Welcome back!" : "Account created!"
+  };
+}
+
+// Adding new OAuth provider when already authenticated
+async function addOAuthProvider(currentUserId: string, newProvider: string) {
+  const oauthResult = await completeOAuth(newProvider, code);
+  const newEmail = oauthResult.email;
+  
+  // Check if this email is already linked somewhere
+  const existingMapping = await findEmailUserMapping(newEmail);
+  
+  if (existingMapping && existingMapping.userId !== currentUserId) {
+    // This email belongs to a different account
+    // For MVP: Block this to prevent confusion
+    throw new Error("This email is already linked to another account");
+  }
+  
+  if (!existingMapping) {
+    // New email - automatically link to current user (no prompt)
+    await createEmailUserMapping(newEmail, currentUserId);
+    await addLinkedEmail(currentUserId, newEmail, newProvider);
+  }
+  
+  // Add OAuth service to user
+  await addOAuthService(currentUserId, newProvider, newEmail);
+  
+  return { message: `${newProvider} connected successfully!` };
 }
 ```
 
