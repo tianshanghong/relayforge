@@ -111,11 +111,15 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const { code, state, error } = request.query;
 
     try {
+      // Check if user is already authenticated
+      const existingSessionId = request.cookies['rf_session'];
+      
       const result = await oauthFlowService.handleCallback(
         provider,
         code,
         state,
-        error
+        error,
+        existingSessionId
       );
 
       // Build redirect URL with session info

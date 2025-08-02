@@ -38,7 +38,8 @@ export class OAuthFlowService {
     provider: string,
     code: string | undefined,
     state: string | undefined,
-    error?: string
+    error?: string,
+    existingSessionId?: string
   ): Promise<{
     sessionUrl: string;
     user: {
@@ -95,11 +96,25 @@ export class OAuthFlowService {
 
     // Use transaction to ensure atomicity of user creation and OAuth token storage
     const result = await prisma.$transaction(async (tx) => {
+      // Check if user is already authenticated via login session
+      let existingUserId: string | null = null;
+      if (existingSessionId) {
+        const session = await tx.session.findUnique({
+          where: { sessionId: existingSessionId },
+          select: { userId: true, expiresAt: true }
+        });
+        
+        if (session && session.expiresAt > new Date()) {
+          existingUserId = session.userId;
+        }
+      }
+
       // Find or create user within transaction
       const { user, isNewUser } = await this.findOrCreateUserInTransaction(
         userInfo.email,
         provider,
-        tx
+        tx,
+        existingUserId
       );
 
       // Store OAuth tokens within same transaction
@@ -261,14 +276,70 @@ export class OAuthFlowService {
   private async findOrCreateUserInTransaction(
     email: string,
     provider: string,
-    tx: Prisma.TransactionClient
+    tx: Prisma.TransactionClient,
+    authenticatedUserId?: string | null
   ) {
-    // Check if user exists with this email
+    const normalizedEmail = email.toLowerCase();
+
+    // CASE 1: User is authenticated - automatically link to their account
+    if (authenticatedUserId) {
+      const authenticatedUser = await tx.user.findUnique({
+        where: { id: authenticatedUserId },
+        include: { linkedEmails: true },
+      });
+
+      if (!authenticatedUser) {
+        throw new Error('Authenticated user not found');
+      }
+
+      // Check if this email is already linked to this user
+      const emailAlreadyLinked = authenticatedUser.linkedEmails.some(
+        le => le.email === normalizedEmail
+      );
+
+      // If email is not linked to this user, link it now
+      if (!emailAlreadyLinked) {
+        // First check if email belongs to another user
+        const emailOwner = await tx.linkedEmail.findUnique({
+          where: { email: normalizedEmail },
+        });
+
+        if (emailOwner && emailOwner.userId !== authenticatedUserId) {
+          throw new Error(`Email ${email} is already linked to another account`);
+        }
+
+        // Link the email to authenticated user
+        await tx.linkedEmail.create({
+          data: {
+            userId: authenticatedUserId,
+            email: normalizedEmail,
+            provider,
+            isPrimary: false,
+          },
+        });
+      }
+
+      // Check if OAuth connection exists
+      const connections = await tx.oAuthConnection.findMany({
+        where: { userId: authenticatedUserId },
+      });
+      const hasThisConnection = connections.some(
+        (c) => c.provider === provider && c.email === normalizedEmail
+      );
+
+      return {
+        user: authenticatedUser,
+        isNewUser: false,
+        isNewConnection: !hasThisConnection,
+      };
+    }
+
+    // CASE 2: Not authenticated - check if email exists
     const existingUser = await tx.user.findFirst({
       where: {
         linkedEmails: {
           some: {
-            email: email.toLowerCase(),
+            email: normalizedEmail,
           },
         },
       },
