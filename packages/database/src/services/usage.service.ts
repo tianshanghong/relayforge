@@ -3,7 +3,7 @@ import type { Usage, ServicePricing } from '@prisma/client';
 
 export interface TrackUsageInput {
   userId: string;
-  sessionId: string;
+  identifier: string;
   service: string;
   method?: string;
   success?: boolean;
@@ -30,7 +30,7 @@ export class UsageService {
    * Track a service usage
    */
   async trackUsage(input: TrackUsageInput): Promise<Usage> {
-    const { userId, sessionId, service, method, success = true } = input;
+    const { userId, identifier, service, method, success = true } = input;
 
     // Get service pricing
     const pricing = await prisma.servicePricing.findUnique({
@@ -45,7 +45,7 @@ export class UsageService {
     return prisma.usage.create({
       data: {
         userId,
-        sessionId,
+        identifier,
         service,
         method,
         credits: pricing.pricePerCall,

@@ -52,7 +52,7 @@ async function buildApp(): Promise<FastifyInstance> {
   return app;
 }
 
-describe('20 Concurrent OAuth Flow Benchmark', () => {
+describe('Concurrent OAuth Flow Benchmark', () => {
   let app: FastifyInstance;
   let googleProvider: GoogleProvider;
 
@@ -103,7 +103,7 @@ describe('20 Concurrent OAuth Flow Benchmark', () => {
     vi.clearAllMocks();
   });
 
-  it('should complete 20 concurrent OAuth flows within performance requirements', async () => {
+  it('should complete concurrent OAuth flows within performance requirements', async () => {
     const concurrency = 20; // Kept within database connection pool limits
     const startTime = Date.now();
     

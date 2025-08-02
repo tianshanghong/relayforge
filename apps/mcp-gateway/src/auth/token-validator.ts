@@ -110,6 +110,15 @@ export class TokenValidator {
     }
   }
 
+  /**
+   * Invalidate a token by its hash
+   * Called when a token is revoked to ensure immediate invalidation
+   */
+  invalidateToken(tokenHash: string) {
+    // Remove from cache to force re-validation
+    this.clearCache(tokenHash);
+  }
+
   getCacheStats() {
     return {
       size: this.tokenCache.size,

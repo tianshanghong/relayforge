@@ -90,13 +90,20 @@ export class McpTokenService {
       return null;
     }
 
-    // Update last used time asynchronously
-    prisma.mcpToken.update({
+    // Update last used time - await to ensure it completes
+    // We don't want to fail auth if this fails, but we want to ensure it completes
+    const updatePromise = prisma.mcpToken.update({
       where: { id: mcpToken.id },
       data: { lastUsedAt: new Date() }
     }).catch(err => {
+      // Log error but don't throw - this is non-critical for auth
       console.error('Failed to update token last used time:', err);
+      // In production, this should be sent to monitoring service
+      // TODO: Add proper error tracking/monitoring
     });
+
+    // Wait for update to complete before returning
+    await updatePromise;
 
     return {
       userId: mcpToken.userId,
@@ -122,6 +129,20 @@ export class McpTokenService {
   /**
    * Revoke a token
    */
+  async getTokenById(tokenId: string): Promise<{ userId: string; hashedToken: string } | null> {
+    const token = await prisma.mcpToken.findUnique({
+      where: { id: tokenId },
+      select: { userId: true, tokenHash: true }
+    });
+
+    if (!token) return null;
+
+    return {
+      userId: token.userId,
+      hashedToken: token.tokenHash
+    };
+  }
+
   async revokeToken(userId: string, tokenId: string): Promise<boolean> {
     const result = await prisma.mcpToken.updateMany({
       where: {

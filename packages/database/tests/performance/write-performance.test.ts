@@ -122,7 +122,7 @@ describe('Database Write Performance', () => {
         provider: 'google',
       });
       
-      const sessionId = await userService.createSession({
+      const identifier = await userService.createSession({
         userId: user.id,
       });
       
@@ -133,7 +133,7 @@ describe('Database Write Performance', () => {
         const start = performance.now();
         const usage = await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          identifier,
           service: 'google-calendar',
           method: 'createEvent',
           success: true,
@@ -162,7 +162,7 @@ describe('Database Write Performance', () => {
           email: `high-freq-${i}@example.com`,
           provider: 'google',
         });
-        const sessionId = await userService.createSession({
+        const identifier = await userService.createSession({
           userId: user.id,
         });
         users.push(user);

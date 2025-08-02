@@ -9,7 +9,7 @@ import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
 import { TokenValidator } from './auth/token-validator';
 import { BillingService } from './services/billing.service';
 import { ServiceRouter } from './routing/service-router';
-import { v4 as uuidv4 } from 'uuid';
+import { mcpTokenService } from '@relayforge/database';
 
 const fastify = Fastify({
   logger: true
@@ -212,38 +212,6 @@ fastify.post('/mcp/u/:slug', async (request, reply) => {
 });
 
 
-// Keep the old endpoint for backward compatibility
-fastify.post('/mcp/hello-world', async (request, reply) => {
-  const service = serviceRouter.getServiceByMethod('hello_world.test');
-  if (!service) {
-    reply.code(404).send({ error: 'Server not found' });
-    return;
-  }
-
-  const sessionId = request.headers['mcp-session-id'] as string || uuidv4();
-  
-  try {
-    const response = await service.adapter.handleHttpRequest(sessionId, request.body as any);
-    
-    if (response) {
-      reply.header('mcp-session-id', sessionId);
-      reply.code(200).send(response);
-    } else {
-      reply.code(202).send();
-    }
-  } catch (error) {
-    reply.code(500).send({
-      jsonrpc: "2.0",
-      id: null,
-      error: {
-        code: -32603,
-        message: "Internal error",
-        data: error instanceof Error ? error.message : String(error)
-      }
-    });
-  }
-});
-
 // WebSocket endpoints
 fastify.register(async function (fastify) {
   // WebSocket handler function
@@ -346,7 +314,51 @@ fastify.register(async function (fastify) {
 
 });
 
-// Cleanup token cache every 5 minutes
+// Token management endpoints
+fastify.post<{
+  Body: { tokenId: string };
+  Headers: { authorization: string };
+}>('/api/tokens/revoke', async (request, reply) => {
+  const authHeader = request.headers.authorization;
+  const authInfo = await tokenValidator.validateBearerToken(authHeader);
+  
+  if (!authInfo) {
+    return reply.status(401).send({
+      error: 'Unauthorized',
+      message: 'Invalid or missing bearer token'
+    });
+  }
+
+  try {
+    // Get the token to be revoked
+    const tokenToRevoke = await mcpTokenService.getTokenById(request.body.tokenId);
+    
+    if (!tokenToRevoke || tokenToRevoke.userId !== authInfo.userId) {
+      return reply.status(404).send({
+        error: 'Token not found',
+        message: 'Token not found or you do not have permission to revoke it'
+      });
+    }
+
+    // Revoke the token
+    const revoked = await mcpTokenService.revokeToken(authInfo.userId, request.body.tokenId);
+    
+    if (revoked && tokenToRevoke.hashedToken) {
+      // Immediately invalidate the cache for this token
+      tokenValidator.invalidateToken(tokenToRevoke.hashedToken);
+    }
+
+    return reply.send({ success: revoked });
+  } catch (error) {
+    fastify.log.error(error);
+    return reply.status(500).send({
+      error: 'Internal server error',
+      message: 'Failed to revoke token'
+    });
+  }
+});
+
+// Cleanup token cache every 5 minutes (as a safety net)
 setInterval(() => {
   tokenValidator.clearCache();
 }, 5 * 60 * 1000);

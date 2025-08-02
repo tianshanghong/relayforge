@@ -18,7 +18,6 @@ export const createTestUser = async (
   return prisma.user.create({
     data: {
       primaryEmail: uniqueEmail,
-          slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       slug: `test-oauth-${userCounter}-${randomId}`,
       credits,
       linkedEmails: {

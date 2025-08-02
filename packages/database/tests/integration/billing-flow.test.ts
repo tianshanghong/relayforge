@@ -11,7 +11,7 @@ describe('Billing Flow Integration', () => {
       initialCredits: 500, // $5.00
     });
     
-    const sessionId = await userService.createSession({
+    const identifier = await userService.createSession({
       userId: user.id,
     });
     
@@ -31,7 +31,7 @@ describe('Billing Flow Integration', () => {
         if (canProceed) {
           await usageService.trackUsage({
             userId: user.id,
-            sessionId,
+            identifier,
             service,
             success: true,
           });
@@ -69,7 +69,7 @@ describe('Billing Flow Integration', () => {
       initialCredits: 5, // Only $0.05
     });
     
-    const sessionId = await userService.createSession({
+    const identifier = await userService.createSession({
       userId: user.id,
     });
     
@@ -105,7 +105,7 @@ describe('Billing Flow Integration', () => {
       provider: 'google',
     });
     
-    const sessionId = await userService.createSession({
+    const identifier = await userService.createSession({
       userId: user.id,
     });
     
@@ -116,7 +116,7 @@ describe('Billing Flow Integration', () => {
       await userService.deductCredits(user.id, 'openai');
       await usageService.trackUsage({
         userId: user.id,
-        sessionId,
+        identifier,
         service: 'openai',
         success: i % 2 === 0, // Alternate success/failure
       });
@@ -148,7 +148,7 @@ describe('Billing Flow Integration', () => {
       provider: 'google',
     });
     
-    const sessionId = await userService.createSession({
+    const identifier = await userService.createSession({
       userId: user.id,
     });
     
@@ -161,7 +161,7 @@ describe('Billing Flow Integration', () => {
         await userService.deductCredits(user.id, service);
         await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          identifier,
           service,
         });
       }

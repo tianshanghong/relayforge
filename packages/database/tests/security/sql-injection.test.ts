@@ -80,13 +80,13 @@ describe('SQL Injection Prevention', () => {
       };
 
       // Should create session without SQL injection
-      const sessionId = await userService.createSession({
+      const identifier = await userService.createSession({
         userId: user.id,
         metadata: maliciousMetadata,
       });
 
       const session = await prisma.session.findUnique({
-        where: { sessionId },
+        where: { sessionId: identifier },
       });
 
       expect(session?.metadata).toEqual(maliciousMetadata);
@@ -158,7 +158,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const sessionId = await userService.createSession({
+      const identifier = await userService.createSession({
         userId: user.id,
       });
 
@@ -181,7 +181,7 @@ describe('SQL Injection Prevention', () => {
         // Should track safely
         const usage = await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          identifier,
           service,
           success: true,
         });
@@ -200,7 +200,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const sessionId = await userService.createSession({
+      const identifier = await userService.createSession({
         userId: user.id,
       });
 
@@ -213,7 +213,7 @@ describe('SQL Injection Prevention', () => {
       for (const method of maliciousMethods) {
         const usage = await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          identifier,
           service: 'google-calendar',
           method,
           success: true,

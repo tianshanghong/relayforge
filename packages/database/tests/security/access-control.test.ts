@@ -96,13 +96,13 @@ describe('Access Control Security', () => {
       // Create usage with correct session-user mapping
       const usage1 = await usageService.trackUsage({
         userId: user1.id,
-        sessionId: session1,
+        identifier: session1,
         service: 'google-calendar',
         success: true,
       });
 
       expect(usage1.userId).toBe(user1.id);
-      expect(usage1.sessionId).toBe(session1);
+      expect(usage1.identifier).toBe(session1);
 
       // In a real system, the API layer would prevent cross-user session usage
       // Here we verify the data model maintains referential integrity
@@ -222,7 +222,7 @@ describe('Access Control Security', () => {
       // Track usage for both users
       await usageService.trackUsage({
         userId: user1.id,
-        sessionId: session1,
+        identifier: session1,
         service: 'google-calendar',
         method: 'createEvent',
         success: true,
@@ -230,7 +230,7 @@ describe('Access Control Security', () => {
 
       await usageService.trackUsage({
         userId: user2.id,
-        sessionId: session2,
+        identifier: session2,
         service: 'openai',
         method: 'complete',
         success: true,
@@ -251,7 +251,7 @@ describe('Access Control Security', () => {
       for (let i = 0; i < 5; i++) {
         await usageService.trackUsage({
           userId: user1.id,
-          sessionId: session1,
+          identifier: session1,
           service: 'google-calendar',
           success: true,
         });
@@ -260,7 +260,7 @@ describe('Access Control Security', () => {
       for (let i = 0; i < 3; i++) {
         await usageService.trackUsage({
           userId: user2.id,
-          sessionId: session2,
+          identifier: session2,
           service: 'github',
           success: true,
         });
@@ -348,7 +348,7 @@ describe('Access Control Security', () => {
 
       await usageService.trackUsage({
         userId: user1.id,
-        sessionId: session1,
+        identifier: session1,
         service: 'github',
         success: true,
       });

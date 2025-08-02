@@ -29,7 +29,7 @@ export class BillingService {
     try {
       await prisma.usage.create({
         data: {
-          sessionId: identifier, // For now, reuse sessionId field for any identifier
+          identifier, // Now properly named - can be sessionId or tokenId
           userId,
           service,
           credits,
