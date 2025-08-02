@@ -1,5 +1,6 @@
 import { prisma } from '../index';
 import { crypto } from '../crypto';
+import { SlugGenerator } from './slug-generator';
 import type { User, LinkedEmail } from '@prisma/client';
 
 export interface CreateUserInput {
@@ -41,10 +42,14 @@ export class UserService {
       return existingLinkedEmail.user;
     }
 
+    // Generate unique slug for new user
+    const slug = await SlugGenerator.generateUserSlug();
+
     // Create new user with linked email
     const user = await prisma.user.create({
       data: {
         primaryEmail: normalizedEmail,
+        slug,
         credits: initialCredits,
         linkedEmails: {
           create: {

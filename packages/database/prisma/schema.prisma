@@ -13,6 +13,7 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   primaryEmail String   @unique
+  slug         String   @unique // Memorable identifier for MCP URL (e.g., "happy-dolphin-42")
   credits      Int      @default(500) // $5.00 in credits = 500 cents
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -22,8 +23,10 @@ model User {
   oauthConnections OAuthConnection[]
   sessions         Session[]
   usage            Usage[]
+  mcpTokens        McpToken[]
 
   @@index([primaryEmail])
+  @@index([slug])
   @@map("users")
 }
 
@@ -120,4 +123,23 @@ model ServicePricing {
 
   @@index([service])
   @@map("service_pricing")
+}
+
+model McpToken {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String    // "Claude Desktop", "Cursor", etc.
+  tokenHash   String    @unique // SHA-256 hash of the actual token
+  prefix      String    // First 8 chars for identification (e.g., "mcp_live")
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("mcp_tokens")
 }
