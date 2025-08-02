@@ -69,6 +69,47 @@ describe('SQL Injection Prevention', () => {
 
     // Note: The malicious metadata test was removed as it was testing session metadata
     // which is not applicable to MCP tokens. MCP tokens don't store metadata.
+
+    it('should safely handle malicious MCP token names', async () => {
+      const user = await userService.createUser({
+        email: 'token-test@example.com',
+        provider: 'google',
+      });
+
+      const maliciousNames = [
+        "Claude Desktop'; DROP TABLE mcp_tokens; --",
+        "Test' OR '1'='1",
+        "Token' UNION SELECT * FROM users --",
+        "'; DELETE FROM mcp_tokens WHERE '1'='1",
+        "Test\"); DROP TABLE users; --",
+      ];
+
+      // Import mcpTokenService
+      const { mcpTokenService } = await import('../../src/services');
+
+      for (const name of maliciousNames) {
+        // Should create token without SQL injection
+        const token = await mcpTokenService.createToken({
+          userId: user.id,
+          name,
+        });
+
+        expect(token.name).toBe(name);
+        expect(token.userId).toBe(user.id);
+
+        // Verify token was created normally
+        const found = await prisma.mcpToken.findUnique({
+          where: { id: token.id },
+        });
+        expect(found?.name).toBe(name);
+      }
+
+      // Verify mcp_tokens table still exists and has correct count
+      const tokenCount = await prisma.mcpToken.count({
+        where: { userId: user.id },
+      });
+      expect(tokenCount).toBe(maliciousNames.length);
+    });
   });
 
   describe('OAuth Service Injection Tests', () => {
