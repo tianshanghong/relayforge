@@ -22,6 +22,7 @@ describe.skip('SessionService (disabled until JWT auth)', () => {
     const user = await prisma.user.create({
       data: {
         primaryEmail: 'session-test@example.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         credits: 500,
       },
     });

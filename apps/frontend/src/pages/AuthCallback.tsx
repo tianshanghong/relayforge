@@ -4,7 +4,8 @@ export function AuthCallback() {
   useEffect(() => {
     // Get params from URL
     const params = new URLSearchParams(window.location.search);
-    const sessionUrl = params.get('session_url');
+    const mcpUrl = params.get('mcp_url');
+    const mcpToken = params.get('mcp_token'); // Only present for new users
     const email = params.get('email');
     const credits = params.get('credits');
     const isNewUser = params.get('is_new_user') === 'true';
@@ -16,10 +17,13 @@ export function AuthCallback() {
       console.error('OAuth error:', error, message);
       // Redirect to home with error
       window.location.href = `/?auth_error=${encodeURIComponent(message || error)}`;
-    } else if (sessionUrl && email && credits) {
-      // Success - redirect to home with session info
+    } else if (mcpUrl && email && credits) {
+      // Success - redirect to home with MCP info
       const redirectUrl = new URL('/', window.location.origin);
-      redirectUrl.searchParams.set('session_url', sessionUrl);
+      redirectUrl.searchParams.set('mcp_url', mcpUrl);
+      if (mcpToken) {
+        redirectUrl.searchParams.set('mcp_token', mcpToken);
+      }
       redirectUrl.searchParams.set('email', email);
       redirectUrl.searchParams.set('credits', credits);
       if (isNewUser) {

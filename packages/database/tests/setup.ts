@@ -127,6 +127,7 @@ beforeEach(async () => {
       prisma.usage.deleteMany(),
       prisma.session.deleteMany(),
       prisma.oAuthConnection.deleteMany(),
+      prisma.mcpToken.deleteMany(),
       prisma.linkedEmail.deleteMany(),
       prisma.user.deleteMany(),
       prisma.servicePricing.deleteMany(),

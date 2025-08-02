@@ -160,6 +160,7 @@ describe('OAuth Service Integration Tests', () => {
         ]),
         connectedServices: ['google'],
       });
+      expect(accountData.slug).toMatch(/^[a-z]+-[a-z]+-\d+$/); // Check slug format separately
 
       // Step 4: Verify database state
       const user = await prisma.user.findFirst({
@@ -232,9 +233,10 @@ describe('OAuth Service Integration Tests', () => {
     beforeEach(async () => {
       // Create a user with OAuth connection
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'token-test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'token-test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
           linkedEmails: {
             create: {
               email: 'token-test@gmail.com',
@@ -411,9 +413,10 @@ describe('OAuth Service Integration Tests', () => {
     it('should handle session expiry gracefully', async () => {
       // Create expired session
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'session-test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'session-test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -442,9 +445,10 @@ describe('OAuth Service Integration Tests', () => {
     it('should update session lastAccessedAt on each use', async () => {
       // Create user and session
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'access-test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'access-test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
