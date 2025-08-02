@@ -1,4 +1,5 @@
 import { mcpTokenService, prisma } from '@relayforge/database';
+import crypto from 'crypto';
 
 export interface AuthInfo {
   userId: string;
@@ -115,8 +116,18 @@ export class TokenValidator {
    * Called when a token is revoked to ensure immediate invalidation
    */
   invalidateToken(tokenHash: string) {
-    // Remove from cache to force re-validation
-    this.clearCache(tokenHash);
+    // Since we can't reverse a hash to get the original token, we need to
+    // iterate through cached entries and find the one that hashes to this value
+    for (const [cachedToken, _] of this.tokenCache.entries()) {
+      if (cachedToken.startsWith('Bearer ')) {
+        const token = cachedToken.substring(7);
+        const hash = crypto.createHash('sha256').update(token).digest('hex');
+        if (hash === tokenHash) {
+          this.clearCache(cachedToken);
+          break; // There should only be one token with this hash
+        }
+      }
+    }
   }
 
   getCacheStats() {
