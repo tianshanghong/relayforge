@@ -6,7 +6,8 @@ import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world';
 import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
-import { SessionValidator } from './auth/session-validator';
+import { TokenValidator } from './auth/token-validator';
+import { BillingService } from './services/billing.service';
 import { ServiceRouter } from './routing/service-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,7 +16,8 @@ const fastify = Fastify({
 });
 
 // Initialize components
-const sessionValidator = new SessionValidator();
+const tokenValidator = new TokenValidator();
+const billingService = new BillingService();
 const serviceRouter = new ServiceRouter();
 
 // Register services
@@ -40,35 +42,22 @@ fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
-// Session-based MCP endpoint
-fastify.post('/mcp/:sessionId', async (request, reply) => {
-  const { sessionId } = request.params as { sessionId: string };
-  
-  // Validate session
-  const sessionInfo = await sessionValidator.validateSession(sessionId);
-  if (!sessionInfo) {
-    reply.code(401).send({ 
-      error: 'Invalid or expired session',
-      message: 'Your RelayForge session has expired or is invalid.',
-      help: 'Visit https://relayforge.xyz/dashboard to create a new session',
-      code: 'SESSION_EXPIRED'
-    });
-    return;
-  }
-
-  const mcpRequest = request.body as any;
-  
-  // Route based on method prefix
+// Unified MCP request handler
+async function handleMCPRequest(
+  authInfo: { userId: string; credits: number; authType: 'session' | 'token'; identifier: string },
+  mcpRequest: any,
+  request: any,
+  reply: any
+) {
   const method = mcpRequest.method;
   
   // Special handling for system methods
   if (method === 'tools/list') {
-    // Aggregate tools from all available services
     const tools: any[] = [];
     
     for (const service of serviceRouter.getAllServices()) {
       try {
-        const response = await service.adapter.handleHttpRequest(sessionId, mcpRequest);
+        const response = await service.adapter.handleHttpRequest(authInfo.identifier, mcpRequest);
         if (response && response.result && response.result.tools) {
           tools.push(...response.result.tools);
         }
@@ -86,7 +75,7 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
   }
   
   // Route to specific service based on method prefix
-  const serviceConfig = await serviceRouter.getServiceWithAuth(method, sessionInfo.userId);
+  const serviceConfig = await serviceRouter.getServiceWithAuth(method, authInfo.userId);
   if (!serviceConfig) {
     reply.code(404).send({
       jsonrpc: '2.0',
@@ -102,7 +91,7 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
   const { service, accessToken } = serviceConfig;
   
   // Get service pricing
-  const pricing = await sessionValidator.getServicePricing(service.prefix);
+  const pricing = await billingService.getServicePricing(service.prefix);
   if (!pricing) {
     reply.code(503).send({
       jsonrpc: '2.0',
@@ -116,10 +105,10 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
   }
 
   // Check credits (without deducting)
-  const hasCredits = await sessionValidator.checkCredits(sessionInfo.userId, service.prefix);
+  const hasCredits = await billingService.checkCredits(authInfo.userId, service.prefix);
   if (!hasCredits) {
     // Track failed attempt due to insufficient credits
-    await sessionValidator.trackUsage(sessionId, sessionInfo.userId, service.prefix, 0, false);
+    await billingService.trackUsage(authInfo.identifier, authInfo.userId, service.prefix, 0, false);
     
     reply.code(402).send({
       jsonrpc: '2.0',
@@ -129,9 +118,9 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
         message: 'Insufficient credits',
         data: {
           service: service.name,
-          userCredits: sessionInfo.credits,
+          userCredits: authInfo.credits,
           requiredCredits: pricing.pricePerCall,
-          shortBy: pricing.pricePerCall - sessionInfo.credits,
+          shortBy: pricing.pricePerCall - authInfo.credits,
         },
       },
     });
@@ -146,7 +135,7 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
     }
     
     // Handle the request
-    const response = await service.adapter.handleHttpRequest(sessionId, mcpRequest);
+    const response = await service.adapter.handleHttpRequest(authInfo.identifier, mcpRequest);
     
     if (response) {
       success = !response.error;
@@ -158,15 +147,13 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
 
     // Charge credits only on successful execution
     if (success) {
-      const charged = await sessionValidator.chargeCredits(sessionInfo.userId, service.prefix);
+      const charged = await billingService.chargeCredits(authInfo.userId, service.prefix);
       if (!charged) {
-        // This shouldn't happen since we checked credits earlier,
-        // but log it if it does
         request.log.error({
           msg: 'Failed to charge credits after successful execution',
-          userId: sessionInfo.userId,
+          userId: authInfo.userId,
           service: service.prefix,
-          sessionId,
+          identifier: authInfo.identifier,
         });
       }
     }
@@ -183,15 +170,47 @@ fastify.post('/mcp/:sessionId', async (request, reply) => {
     });
   } finally {
     // Track usage for billing and analytics
-    await sessionValidator.trackUsage(
-      sessionId,
-      sessionInfo.userId,
+    await billingService.trackUsage(
+      authInfo.identifier,
+      authInfo.userId,
       service.prefix,
       pricing.pricePerCall,
       success
     );
   }
+}
+
+// Token-based MCP endpoint (new stable URLs)
+fastify.post('/mcp/u/:slug', async (request, reply) => {
+  const { slug } = request.params as { slug: string };
+  const authHeader = request.headers.authorization as string;
+
+  // Validate bearer token
+  const authInfo = await tokenValidator.validateBearerToken(authHeader);
+  if (!authInfo) {
+    reply.code(401).send({ 
+      error: 'Invalid or missing authentication',
+      message: 'Bearer token is required in Authorization header',
+      help: 'Add Authorization: Bearer <token> header to your request',
+      code: 'AUTH_REQUIRED'
+    });
+    return;
+  }
+
+  // Verify token belongs to user with this slug
+  const isValid = await tokenValidator.validateTokenForSlug(authInfo, slug);
+  if (!isValid) {
+    reply.code(403).send({ 
+      error: 'Forbidden',
+      message: 'Token does not belong to this user',
+      code: 'FORBIDDEN'
+    });
+    return;
+  }
+
+  return handleMCPRequest(authInfo, request.body as any, request, reply);
 });
+
 
 // Keep the old endpoint for backward compatibility
 fastify.post('/mcp/hello-world', async (request, reply) => {
@@ -225,36 +244,17 @@ fastify.post('/mcp/hello-world', async (request, reply) => {
   }
 });
 
-// WebSocket endpoint for session-based MCP requests
+// WebSocket endpoints
 fastify.register(async function (fastify) {
-  fastify.get('/mcp/:sessionId/ws', { websocket: true }, async (socket, req) => {
-    const { sessionId } = req.params as { sessionId: string };
-    
-    // Validate session
-    const sessionInfo = await sessionValidator.validateSession(sessionId);
-    if (!sessionInfo) {
-      socket.send(JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32002,
-          message: "Session expired or invalid",
-          data: {
-            help: "Visit https://relayforge.xyz/dashboard to create a new session",
-            code: "SESSION_EXPIRED"
-          }
-        }
-      }));
-      socket.close(1008, 'Session expired - visit https://relayforge.xyz/dashboard');
-      return;
-    }
-
+  // WebSocket handler function
+  async function handleWebSocket(socket: any, authInfo: any) {
     socket.on('message', async (message: Buffer) => {
       try {
         const mcpRequest = JSON.parse(message.toString());
         const method = mcpRequest.method;
         
         // Route to service
-        const serviceConfig = await serviceRouter.getServiceWithAuth(method, sessionInfo.userId);
+        const serviceConfig = await serviceRouter.getServiceWithAuth(method, authInfo.userId);
         if (!serviceConfig) {
           socket.send(JSON.stringify({
             jsonrpc: '2.0',
@@ -275,7 +275,7 @@ fastify.register(async function (fastify) {
         }
         
         const response = await service.adapter.handleWebSocketMessage(
-          sessionId,
+          authInfo.identifier,
           message.toString()
         );
         
@@ -298,12 +298,57 @@ fastify.register(async function (fastify) {
     socket.on('close', () => {
       // Cleanup if needed
     });
+  }
+
+  // Token-based WebSocket endpoint
+  fastify.get('/mcp/u/:slug/ws', { websocket: true }, async (socket, req) => {
+    const { slug } = req.params as { slug: string };
+    const authHeader = req.headers.authorization as string;
+
+    // Validate bearer token
+    const authInfo = await tokenValidator.validateBearerToken(authHeader);
+    if (!authInfo) {
+      socket.send(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32002,
+          message: "Invalid or missing authentication",
+          data: {
+            help: "Bearer token is required in Authorization header",
+            code: "AUTH_REQUIRED"
+          }
+        }
+      }));
+      socket.close(1008, 'Authentication required');
+      return;
+    }
+
+    // Verify token belongs to user with this slug
+    const isValid = await tokenValidator.validateTokenForSlug(authInfo, slug);
+    if (!isValid) {
+      socket.send(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32002,
+          message: "Forbidden",
+          data: {
+            message: "Token does not belong to this user",
+            code: "FORBIDDEN"
+          }
+        }
+      }));
+      socket.close(1008, 'Forbidden');
+      return;
+    }
+
+    await handleWebSocket(socket, authInfo);
   });
+
 });
 
-// Cleanup expired sessions every 5 minutes
+// Cleanup token cache every 5 minutes
 setInterval(() => {
-  sessionValidator.clearCache();
+  tokenValidator.clearCache();
 }, 5 * 60 * 1000);
 
 // Start the server

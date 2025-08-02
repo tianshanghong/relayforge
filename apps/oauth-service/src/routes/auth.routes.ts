@@ -118,22 +118,19 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         error
       );
 
-      // Build redirect URL with session info
+      // Build redirect URL with MCP info
       const redirectUrl = new URL(`${config.FRONTEND_URL}/auth/success`);
-      redirectUrl.searchParams.set('session_url', result.sessionUrl);
+      redirectUrl.searchParams.set('mcp_url', result.mcpUrl);
+      if (result.mcpToken) {
+        // Only set token in URL for new users - this is shown ONCE
+        redirectUrl.searchParams.set('mcp_token', result.mcpToken);
+      }
       redirectUrl.searchParams.set('email', result.user.email);
       redirectUrl.searchParams.set('credits', result.user.credits.toString());
       redirectUrl.searchParams.set('is_new_user', result.user.isNewUser.toString());
 
-      // Set secure session cookie
-      const sessionUrl = new URL(result.sessionUrl);
-      const sessionId = sessionUrl.pathname.split('/').pop();
-      
-      if (!sessionId) {
-        throw new OAuthError('INVALID_SESSION_URL', 'Invalid session URL format');
-      }
-      
-      reply.setCookie('rf_session', sessionId, {
+      // Set secure session cookie for web UI
+      reply.setCookie('rf_session', result.sessionId, {
         httpOnly: true,
         secure: config.NODE_ENV === 'production',
         sameSite: 'lax',

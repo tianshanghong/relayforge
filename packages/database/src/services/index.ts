@@ -1,7 +1,7 @@
 export { UserService } from './user.service';
 export { OAuthService } from './oauth.service';
 export { UsageService } from './usage.service';
-export { McpTokenService } from './mcp-token.service';
+export { McpTokenService, type McpTokenWithPlainText } from './mcp-token.service';
 export { SlugGenerator } from './slug-generator';
 
 // Export singleton instances for convenience

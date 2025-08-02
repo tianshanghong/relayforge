@@ -23,9 +23,10 @@ describe('Secure Account Linking', () => {
     it('should add provider to existing account with same email', async () => {
       // Create existing user
       const existingUser = await prisma.user.create({
-        data: {
-          primaryEmail: 'alice@gmail.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'alice@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'alice@gmail.com',
@@ -51,9 +52,10 @@ describe('Secure Account Linking', () => {
     it('should create pending session for new email', async () => {
       // Create existing user with different email
       await prisma.user.create({
-        data: {
-          primaryEmail: 'alice@gmail.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'alice@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'alice@gmail.com',
@@ -79,9 +81,10 @@ describe('Secure Account Linking', () => {
     it('should NOT suggest similar emails', async () => {
       // Create users with similar emails
       await prisma.user.create({
-        data: {
-          primaryEmail: 'john@gmail.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'john@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'john@gmail.com',
@@ -93,9 +96,10 @@ describe('Secure Account Linking', () => {
       });
 
       await prisma.user.create({
-        data: {
-          primaryEmail: 'johnson@gmail.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'johnson@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'johnson@gmail.com',
@@ -128,9 +132,10 @@ describe('Secure Account Linking', () => {
     it('should throw error if provider already connected', async () => {
       // Create user with Google OAuth
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'alice@gmail.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'alice@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'alice@gmail.com',
@@ -169,9 +174,10 @@ describe('Secure Account Linking', () => {
     it('should merge accounts after user authenticates both', async () => {
       // Create two accounts that user owns
       const account1 = await prisma.user.create({
-        data: {
-          primaryEmail: 'alice@gmail.com',
-          credits: 300,
+      data: {
+        primaryEmail: 'alice@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 300,
           linkedEmails: {
             create: {
               email: 'alice@gmail.com',
@@ -183,9 +189,10 @@ describe('Secure Account Linking', () => {
       });
 
       const account2 = await prisma.user.create({
-        data: {
-          primaryEmail: 'alice@company.com',
-          credits: 200,
+      data: {
+        primaryEmail: 'alice@company.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 200,
           linkedEmails: {
             create: {
               email: 'alice@company.com',
@@ -242,9 +249,10 @@ describe('Secure Account Linking', () => {
     it.skip('should handle duplicate emails during merge', async () => {
       // Scenario: User accidentally created two accounts with same provider
       const account1 = await prisma.user.create({
-        data: {
-          primaryEmail: 'merge-test1@gmail.com',
-          credits: 300,
+      data: {
+        primaryEmail: 'merge-test1@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 300,
           linkedEmails: {
             create: [
               {
@@ -263,9 +271,10 @@ describe('Secure Account Linking', () => {
       });
 
       const account2 = await prisma.user.create({
-        data: {
-          primaryEmail: 'merge-test2@work.com',
-          credits: 200,
+      data: {
+        primaryEmail: 'merge-test2@work.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 200,
           linkedEmails: {
             create: [
               {
@@ -350,9 +359,10 @@ describe('Secure Account Linking', () => {
     it('should not reveal account existence to unauthenticated users', async () => {
       // Create existing user
       await prisma.user.create({
-        data: {
-          primaryEmail: 'secret@company.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'secret@company.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
           linkedEmails: {
             create: {
               email: 'secret@company.com',

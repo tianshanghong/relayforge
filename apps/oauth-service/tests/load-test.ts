@@ -248,9 +248,10 @@ describe('OAuth Load Testing', () => {
       
       for (let i = 0; i < 100; i++) {
         const user = await prisma.user.create({
-          data: {
-            primaryEmail: `refresh-user-${i}@gmail.com`,
-            credits: 100,
+      data: {
+        primaryEmail: `refresh-user-${i}@gmail.com`,
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
             linkedEmails: {
               create: {
                 email: `refresh-user-${i}@gmail.com`,
@@ -349,9 +350,10 @@ describe('OAuth Load Testing', () => {
       // Create 1000 test sessions
       for (let i = 0; i < 1000; i++) {
         const user = await prisma.user.create({
-          data: {
-            primaryEmail: `session-user-${i}@gmail.com`,
-            credits: 100,
+      data: {
+        primaryEmail: `session-user-${i}@gmail.com`,
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
           },
         });
 

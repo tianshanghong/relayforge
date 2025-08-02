@@ -233,9 +233,10 @@ describe('OAuth Security Audit Tests', () => {
 
       // Create user
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'expired-session@test.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'expired-session@test.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -286,9 +287,10 @@ describe('OAuth Security Audit Tests', () => {
 
       // Create user and session
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'access-tracking@test.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'access-tracking@test.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 

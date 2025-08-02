@@ -11,6 +11,9 @@ export interface McpTokenWithPlainText extends McpToken {
   plainToken: string;
 }
 
+// Re-export the type for external use
+export type { McpTokenWithPlainText as McpTokenWithPlainTextType };
+
 export class McpTokenService {
   private static readonly TOKEN_PREFIX = 'mcp_live_';
   private static readonly TOKEN_LENGTH = 32; // bytes -> 43 chars base64url

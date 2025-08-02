@@ -10,7 +10,8 @@ interface OAuthProvider {
 interface UserSession {
   email: string;
   credits: number;
-  sessionUrl: string;
+  mcpUrl: string;
+  mcpToken?: string; // Only present for new users
 }
 
 export function AuthSection() {
@@ -21,19 +22,25 @@ export function AuthSection() {
   useEffect(() => {
     // Check for session from URL params (after OAuth redirect)
     const params = new URLSearchParams(window.location.search);
-    const sessionUrl = params.get('session_url');
+    const mcpUrl = params.get('mcp_url');
+    const mcpToken = params.get('mcp_token'); // Only for new users
     const email = params.get('email');
     const credits = params.get('credits');
     
-    if (sessionUrl && email && credits) {
-      const newSession = {
+    if (mcpUrl && email && credits) {
+      const newSession: UserSession = {
         email,
         credits: parseInt(credits),
-        sessionUrl
+        mcpUrl,
+        ...(mcpToken && { mcpToken })
       };
       setSession(newSession);
-      localStorage.setItem('relayforge_session', JSON.stringify(newSession));
-      // Clean URL
+      
+      // Only store non-sensitive data in localStorage
+      const storedSession = { email, credits: newSession.credits, mcpUrl };
+      localStorage.setItem('relayforge_session', JSON.stringify(storedSession));
+      
+      // Clean URL (especially important to remove token from URL)
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
       // Check localStorage for existing session
@@ -88,12 +95,27 @@ export function AuthSection() {
           <div>
             <p className="text-gray-600">Your MCP URL</p>
             <div className="mt-2 p-3 bg-gray-100 rounded-lg">
-              <code className="text-sm break-all">{session.sessionUrl}</code>
+              <code className="text-sm break-all">{session.mcpUrl}</code>
             </div>
             <p className="text-sm text-gray-500 mt-2">
               Use this URL in your Claude or Cursor configuration
             </p>
           </div>
+          {session.mcpToken && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 font-semibold mb-2">⚠️ Save your token!</p>
+              <p className="text-sm text-yellow-700 mb-3">
+                This token is shown only once. Save it securely - you'll need it for authentication.
+              </p>
+              <div className="p-3 bg-white rounded border border-yellow-300">
+                <code className="text-sm break-all font-mono">{session.mcpToken}</code>
+              </div>
+              <p className="text-sm text-yellow-700 mt-3">
+                Add to your MCP client config:<br/>
+                <code className="text-xs">Authorization: Bearer {session.mcpToken}</code>
+              </p>
+            </div>
+          )}
           <button
             onClick={handleLogout}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"

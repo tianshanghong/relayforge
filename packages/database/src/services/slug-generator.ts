@@ -28,8 +28,9 @@ export class SlugGenerator {
    * Format: {adjective}-{noun}-{number}
    * Example: happy-dolphin-42
    */
-  static async generateUserSlug(): Promise<string> {
+  static async generateUserSlug(tx?: any): Promise<string> {
     const maxAttempts = 50; // Increase attempts due to limited word pool
+    const db = tx || prisma; // Use transaction client if provided
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const adjective = this.getRandomElement(ADJECTIVES);
@@ -39,7 +40,7 @@ export class SlugGenerator {
       const slug = `${adjective}-${noun}-${number}`;
       
       // Check if slug already exists
-      const existing = await prisma.user.findUnique({
+      const existing = await db.user.findUnique({
         where: { slug },
         select: { id: true }
       });

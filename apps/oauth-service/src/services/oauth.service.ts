@@ -1,4 +1,11 @@
-import { OAuthService as DatabaseOAuthService, prisma, crypto } from '@relayforge/database';
+import { 
+  OAuthService as DatabaseOAuthService, 
+  prisma, 
+  crypto,
+  mcpTokenService,
+  McpTokenWithPlainText,
+  SlugGenerator
+} from '@relayforge/database';
 import { Prisma } from '@prisma/client';
 import { providerRegistry } from '../providers/registry';
 import { CSRFManager } from '../utils/csrf';
@@ -40,10 +47,13 @@ export class OAuthFlowService {
     state: string | undefined,
     error?: string
   ): Promise<{
-    sessionUrl: string;
+    mcpUrl: string;
+    mcpToken?: string; // Only provided for new users or new tokens
+    sessionId: string; // For web UI authentication
     user: {
       id: string;
       email: string;
+      slug: string;
       credits: number;
       isNewUser: boolean;
     };
@@ -114,16 +124,34 @@ export class OAuthFlowService {
       }, tx);
 
       return { user, isNewUser };
+    }, {
+      maxWait: 10000, // 10 seconds max wait time
+      timeout: 20000, // 20 seconds timeout for the transaction
     });
 
-    // Create session (outside transaction as it's independent)
-    const { sessionUrl } = await SessionManager.createSession(result.user.id);
+    // Create web session for UI authentication
+    const session = await SessionManager.createSession(result.user.id);
+
+    // Create MCP token for new users
+    let mcpToken: McpTokenWithPlainText | undefined;
+    if (result.isNewUser) {
+      mcpToken = await mcpTokenService.createToken({
+        userId: result.user.id,
+        name: 'Default Token' // Could be customized based on OAuth provider
+      });
+    }
+
+    // Build MCP URL
+    const mcpUrl = `${process.env.MCP_BASE_URL || 'https://relayforge.com'}/mcp/u/${result.user.slug}`;
 
     return {
-      sessionUrl,
+      mcpUrl,
+      mcpToken: mcpToken?.plainToken, // Only available on creation
+      sessionId: session.sessionId,
       user: {
         id: result.user.id,
         email: result.user.primaryEmail,
+        slug: result.user.slug,
         credits: result.user.credits,
         isNewUser: result.isNewUser,
       },
@@ -293,10 +321,14 @@ export class OAuthFlowService {
       };
     }
 
+    // Generate unique slug for new user
+    const slug = await SlugGenerator.generateUserSlug(tx);
+
     // Create new user with $5 free credits within transaction
     const newUser = await tx.user.create({
       data: {
         primaryEmail: email.toLowerCase(),
+        slug,
         credits: 500, // $5.00 in cents
         linkedEmails: {
           create: {
