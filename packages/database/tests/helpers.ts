@@ -53,6 +53,18 @@ export const testHelpers = {
     return sessionId;
   },
 
+  async createMcpToken(userId: string, name = 'Test Token') {
+    const token = await prisma.mcpToken.create({
+      data: {
+        userId,
+        name,
+        tokenHash: `test-hash-${Date.now()}-${Math.random()}`,
+        prefix: 'mcp_test',
+      },
+    });
+    return token.id;
+  },
+
   async createOAuthConnection(userId: string, provider = 'google', email?: string) {
     // If no email provided, get the user's primary email
     if (!email) {

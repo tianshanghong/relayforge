@@ -6,8 +6,8 @@ import { testHelpers } from '../helpers';
 describe('Access Control Security', () => {
   let user1: any;
   let user2: any;
-  let session1: string;
-  let session2: string;
+  let token1: string;
+  let token2: string;
 
   beforeEach(async () => {
     await testHelpers.cleanDatabase();
@@ -25,9 +25,9 @@ describe('Access Control Security', () => {
       provider: 'google',
     });
 
-    // Create sessions for both users
-    session1 = await userService.createSession({ userId: user1.id });
-    session2 = await userService.createSession({ userId: user2.id });
+    // Create tokens for both users
+    token1 = await testHelpers.createMcpToken(user1.id);
+    token2 = await testHelpers.createMcpToken(user2.id);
   });
 
   describe('User Data Isolation', () => {
@@ -91,25 +91,25 @@ describe('Access Control Security', () => {
     });
   });
 
-  describe('Session Security', () => {
-    it('should validate session belongs to user', async () => {
-      // Create usage with correct session-user mapping
+  describe('Token Security', () => {
+    it('should validate token belongs to user', async () => {
+      // Create usage with correct token-user mapping
       const usage1 = await usageService.trackUsage({
         userId: user1.id,
-        identifier: session1,
+        tokenId: token1,
         service: 'google-calendar',
         success: true,
       });
 
       expect(usage1.userId).toBe(user1.id);
-      expect(usage1.identifier).toBe(session1);
+      expect(usage1.tokenId).toBe(token1);
 
-      // In a real system, the API layer would prevent cross-user session usage
+      // In a real system, the API layer would prevent cross-user token usage
       // Here we verify the data model maintains referential integrity
-      const session = await prisma.session.findUnique({
-        where: { sessionId: session1 },
+      const token = await prisma.mcpToken.findUnique({
+        where: { id: token1 },
       });
-      expect(session?.userId).toBe(user1.id);
+      expect(token?.userId).toBe(user1.id);
     });
 
     it('should handle expired sessions', async () => {
@@ -222,7 +222,7 @@ describe('Access Control Security', () => {
       // Track usage for both users
       await usageService.trackUsage({
         userId: user1.id,
-        identifier: session1,
+        tokenId: token1,
         service: 'google-calendar',
         method: 'createEvent',
         success: true,
@@ -230,7 +230,7 @@ describe('Access Control Security', () => {
 
       await usageService.trackUsage({
         userId: user2.id,
-        identifier: session2,
+        tokenId: token2,
         service: 'openai',
         method: 'complete',
         success: true,
@@ -251,7 +251,7 @@ describe('Access Control Security', () => {
       for (let i = 0; i < 5; i++) {
         await usageService.trackUsage({
           userId: user1.id,
-          identifier: session1,
+          tokenId: token1,
           service: 'google-calendar',
           success: true,
         });
@@ -260,7 +260,7 @@ describe('Access Control Security', () => {
       for (let i = 0; i < 3; i++) {
         await usageService.trackUsage({
           userId: user2.id,
-          identifier: session2,
+          tokenId: token2,
           service: 'github',
           success: true,
         });
@@ -348,7 +348,7 @@ describe('Access Control Security', () => {
 
       await usageService.trackUsage({
         userId: user1.id,
-        identifier: session1,
+        tokenId: token1,
         service: 'github',
         success: true,
       });

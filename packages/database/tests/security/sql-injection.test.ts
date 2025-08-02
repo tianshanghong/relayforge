@@ -67,30 +67,8 @@ describe('SQL Injection Prevention', () => {
       expect(realUser?.id).toBe(user.id);
     });
 
-    it('should safely handle malicious metadata', async () => {
-      const user = await userService.createUser({
-        email: 'metadata-test@example.com',
-        provider: 'google',
-      });
-
-      const maliciousMetadata = {
-        userAgent: "'; DROP TABLE sessions; --",
-        ipAddress: "127.0.0.1' OR '1'='1",
-        custom: "admin' UNION SELECT * FROM users --",
-      };
-
-      // Should create session without SQL injection
-      const identifier = await userService.createSession({
-        userId: user.id,
-        metadata: maliciousMetadata,
-      });
-
-      const session = await prisma.session.findUnique({
-        where: { sessionId: identifier },
-      });
-
-      expect(session?.metadata).toEqual(maliciousMetadata);
-    });
+    // Note: The malicious metadata test was removed as it was testing session metadata
+    // which is not applicable to MCP tokens. MCP tokens don't store metadata.
   });
 
   describe('OAuth Service Injection Tests', () => {
@@ -158,9 +136,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const identifier = await userService.createSession({
-        userId: user.id,
-      });
+      const tokenId = await testHelpers.createMcpToken(user.id);
 
       const maliciousServices = [
         "google-calendar'; DROP TABLE usage; --",
@@ -181,7 +157,7 @@ describe('SQL Injection Prevention', () => {
         // Should track safely
         const usage = await usageService.trackUsage({
           userId: user.id,
-          identifier,
+          tokenId,
           service,
           success: true,
         });
@@ -200,9 +176,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const identifier = await userService.createSession({
-        userId: user.id,
-      });
+      const tokenId = await testHelpers.createMcpToken(user.id);
 
       const maliciousMethods = [
         "createEvent'; DELETE FROM usage; --",
@@ -213,7 +187,7 @@ describe('SQL Injection Prevention', () => {
       for (const method of maliciousMethods) {
         const usage = await usageService.trackUsage({
           userId: user.id,
-          identifier,
+          tokenId,
           service: 'google-calendar',
           method,
           success: true,

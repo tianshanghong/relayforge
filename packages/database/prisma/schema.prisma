@@ -97,7 +97,7 @@ model Session {
 model Usage {
   id         String   @id @default(uuid())
   userId     String
-  identifier String   // Can be sessionId or tokenId
+  tokenId    String   // Foreign key to McpToken
   service    String   // 'google-calendar', 'openai', etc.
   method     String?  // Optional: specific method called
   credits    Int      // Cost in credits (cents)
@@ -105,12 +105,12 @@ model Usage {
   timestamp  DateTime @default(now())
 
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // Note: identifier is not a foreign key as it can reference either sessions or tokens
+  user  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token McpToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
   @@index([userId, timestamp])
   @@index([service])
-  @@index([identifier])
+  @@index([tokenId])
   @@map("usage")
 }
 
@@ -136,7 +136,8 @@ model McpToken {
   revokedAt   DateTime?
 
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage Usage[]
 
   @@index([tokenHash])
   @@index([userId])

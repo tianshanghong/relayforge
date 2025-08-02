@@ -122,9 +122,7 @@ describe('Database Write Performance', () => {
         provider: 'google',
       });
       
-      const identifier = await userService.createSession({
-        userId: user.id,
-      });
+      const tokenId = await testHelpers.createMcpToken(user.id);
       
       const measurements = [];
       
@@ -133,7 +131,7 @@ describe('Database Write Performance', () => {
         const start = performance.now();
         const usage = await usageService.trackUsage({
           userId: user.id,
-          identifier,
+          tokenId,
           service: 'google-calendar',
           method: 'createEvent',
           success: true,
@@ -162,11 +160,9 @@ describe('Database Write Performance', () => {
           email: `high-freq-${i}@example.com`,
           provider: 'google',
         });
-        const identifier = await userService.createSession({
-          userId: user.id,
-        });
+        const tokenId = await testHelpers.createMcpToken(user.id);
         users.push(user);
-        sessions.push(sessionId);
+        sessions.push(tokenId);
       }
       
       // Simulate burst of usage from multiple users
@@ -178,7 +174,7 @@ describe('Database Write Performance', () => {
         promises.push(
           usageService.trackUsage({
             userId: users[userIndex].id,
-            sessionId: sessions[userIndex],
+            tokenId: sessions[userIndex],
             service: i % 2 === 0 ? 'google-calendar' : 'openai',
             success: true,
           })

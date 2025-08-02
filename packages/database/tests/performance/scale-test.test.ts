@@ -94,13 +94,13 @@ describe.skip('100k User Scale Test', () => {
     
     for (let i = 0; i < activeUserCount; i++) {
       const userId = `scale-user-${i * 10}`;
-      const identifier = `scale-session-${i * 10}`;
+      const tokenId = `scale-session-${i * 10}`;
       
       // Each active user has 10 usage records
       for (let j = 0; j < 10; j++) {
         usageBatch.push({
           userId,
-          identifier,
+          tokenId,
           service: j % 2 === 0 ? 'google-calendar' : 'openai',
           credits: j % 2 === 0 ? 2 : 1,
           success: true,

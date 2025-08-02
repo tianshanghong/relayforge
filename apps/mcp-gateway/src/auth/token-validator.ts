@@ -4,7 +4,7 @@ export interface AuthInfo {
   userId: string;
   credits: number;
   authType: 'session' | 'token';
-  identifier: string; // sessionId or tokenId
+  tokenId: string;
 }
 
 export class TokenValidator {
@@ -53,7 +53,7 @@ export class TokenValidator {
         userId: user.id,
         credits: user.credits,
         authType: 'token',
-        identifier: result.tokenId,
+        tokenId: result.tokenId,
       };
 
       // Cache the result

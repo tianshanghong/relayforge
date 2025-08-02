@@ -43,7 +43,7 @@ describe('Token-based Authentication', () => {
         userId: mockUserId,
         credits: 500,
         authType: 'token',
-        identifier: mockTokenId,
+        tokenId: mockTokenId,
       });
     });
 

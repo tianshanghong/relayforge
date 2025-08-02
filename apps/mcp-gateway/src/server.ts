@@ -44,7 +44,7 @@ fastify.get('/health', async () => {
 
 // Unified MCP request handler
 async function handleMCPRequest(
-  authInfo: { userId: string; credits: number; authType: 'session' | 'token'; identifier: string },
+  authInfo: { userId: string; credits: number; authType: 'session' | 'token'; tokenId: string },
   mcpRequest: any,
   request: any,
   reply: any
@@ -57,7 +57,7 @@ async function handleMCPRequest(
     
     for (const service of serviceRouter.getAllServices()) {
       try {
-        const response = await service.adapter.handleHttpRequest(authInfo.identifier, mcpRequest);
+        const response = await service.adapter.handleHttpRequest(authInfo.tokenId, mcpRequest);
         if (response && response.result && response.result.tools) {
           tools.push(...response.result.tools);
         }
@@ -108,7 +108,7 @@ async function handleMCPRequest(
   const hasCredits = await billingService.checkCredits(authInfo.userId, service.prefix);
   if (!hasCredits) {
     // Track failed attempt due to insufficient credits
-    await billingService.trackUsage(authInfo.identifier, authInfo.userId, service.prefix, 0, false);
+    await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false);
     
     reply.code(402).send({
       jsonrpc: '2.0',
@@ -135,7 +135,7 @@ async function handleMCPRequest(
     }
     
     // Handle the request
-    const response = await service.adapter.handleHttpRequest(authInfo.identifier, mcpRequest);
+    const response = await service.adapter.handleHttpRequest(authInfo.tokenId, mcpRequest);
     
     if (response) {
       success = !response.error;
@@ -153,7 +153,7 @@ async function handleMCPRequest(
           msg: 'Failed to charge credits after successful execution',
           userId: authInfo.userId,
           service: service.prefix,
-          identifier: authInfo.identifier,
+          identifier: authInfo.tokenId,
         });
       }
     }
@@ -171,7 +171,7 @@ async function handleMCPRequest(
   } finally {
     // Track usage for billing and analytics
     await billingService.trackUsage(
-      authInfo.identifier,
+      authInfo.tokenId,
       authInfo.userId,
       service.prefix,
       pricing.pricePerCall,
@@ -243,7 +243,7 @@ fastify.register(async function (fastify) {
         }
         
         const response = await service.adapter.handleWebSocketMessage(
-          authInfo.identifier,
+          authInfo.tokenId,
           message.toString()
         );
         

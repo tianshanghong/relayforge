@@ -20,7 +20,7 @@ export class BillingService {
   }
 
   async trackUsage(
-    identifier: string, // Could be sessionId or tokenId
+    tokenId: string,
     userId: string,
     service: string,
     credits: number,
@@ -29,7 +29,7 @@ export class BillingService {
     try {
       await prisma.usage.create({
         data: {
-          identifier, // Now properly named - can be sessionId or tokenId
+          tokenId,
           userId,
           service,
           credits,

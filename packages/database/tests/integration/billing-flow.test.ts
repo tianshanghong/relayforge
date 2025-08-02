@@ -11,9 +11,7 @@ describe('Billing Flow Integration', () => {
       initialCredits: 500, // $5.00
     });
     
-    const identifier = await userService.createSession({
-      userId: user.id,
-    });
+    const tokenId = await testHelpers.createMcpToken(user.id);
     
     // Seed pricing
     await testHelpers.seedServicePricing();
@@ -31,7 +29,7 @@ describe('Billing Flow Integration', () => {
         if (canProceed) {
           await usageService.trackUsage({
             userId: user.id,
-            identifier,
+            tokenId,
             service,
             success: true,
           });
@@ -69,9 +67,7 @@ describe('Billing Flow Integration', () => {
       initialCredits: 5, // Only $0.05
     });
     
-    const identifier = await userService.createSession({
-      userId: user.id,
-    });
+    const tokenId = await testHelpers.createMcpToken(user.id);
     
     await testHelpers.seedServicePricing();
     
@@ -105,9 +101,7 @@ describe('Billing Flow Integration', () => {
       provider: 'google',
     });
     
-    const identifier = await userService.createSession({
-      userId: user.id,
-    });
+    const tokenId = await testHelpers.createMcpToken(user.id);
     
     await testHelpers.seedServicePricing();
     
@@ -116,7 +110,7 @@ describe('Billing Flow Integration', () => {
       await userService.deductCredits(user.id, 'openai');
       await usageService.trackUsage({
         userId: user.id,
-        identifier,
+        tokenId,
         service: 'openai',
         success: i % 2 === 0, // Alternate success/failure
       });
@@ -148,9 +142,7 @@ describe('Billing Flow Integration', () => {
       provider: 'google',
     });
     
-    const identifier = await userService.createSession({
-      userId: user.id,
-    });
+    const tokenId = await testHelpers.createMcpToken(user.id);
     
     await testHelpers.seedServicePricing();
     
@@ -161,7 +153,7 @@ describe('Billing Flow Integration', () => {
         await userService.deductCredits(user.id, service);
         await usageService.trackUsage({
           userId: user.id,
-          identifier,
+          tokenId,
           service,
         });
       }

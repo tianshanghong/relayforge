@@ -204,7 +204,7 @@ describe('Basic Database Performance', () => {
         const start = performance.now();
         await usageService.trackUsage({
           userId: user.id,
-          identifier: session.sessionId,
+          tokenId: session.sessionId,
           service,
           success: true,
         });

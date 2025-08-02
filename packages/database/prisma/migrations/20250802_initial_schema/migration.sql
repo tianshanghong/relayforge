@@ -2,6 +2,7 @@
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "primaryEmail" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "credits" INTEGER NOT NULL DEFAULT 500,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -34,6 +35,10 @@ CREATE TABLE "oauth_connections" (
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "connectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastUsedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastRefreshAttempt" TIMESTAMP(3),
+    "refreshFailureCount" INTEGER NOT NULL DEFAULT 0,
+    "lastRefreshError" TEXT,
+    "isHealthy" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "oauth_connections_pkey" PRIMARY KEY ("id")
 );
@@ -55,7 +60,7 @@ CREATE TABLE "sessions" (
 CREATE TABLE "usage" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "sessionId" TEXT NOT NULL,
+    "tokenId" TEXT NOT NULL,
     "service" TEXT NOT NULL,
     "method" TEXT,
     "credits" INTEGER NOT NULL,
@@ -76,11 +81,34 @@ CREATE TABLE "service_pricing" (
     CONSTRAINT "service_pricing_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "mcp_tokens" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "prefix" TEXT NOT NULL,
+    "lastUsedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revokedAt" TIMESTAMP(3),
+
+    CONSTRAINT "mcp_tokens_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_primaryEmail_key" ON "users"("primaryEmail");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_slug_key" ON "users"("slug");
+
+-- CreateIndex
 CREATE INDEX "users_primaryEmail_idx" ON "users"("primaryEmail");
+
+-- CreateIndex
+CREATE INDEX "users_slug_idx" ON "users"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "linked_emails_email_key" ON "linked_emails"("email");
 
 -- CreateIndex
 CREATE INDEX "linked_emails_email_idx" ON "linked_emails"("email");
@@ -89,13 +117,16 @@ CREATE INDEX "linked_emails_email_idx" ON "linked_emails"("email");
 CREATE INDEX "linked_emails_userId_idx" ON "linked_emails"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "linked_emails_email_key" ON "linked_emails"("email");
+CREATE UNIQUE INDEX "oauth_connections_userId_provider_email_key" ON "oauth_connections"("userId", "provider", "email");
 
 -- CreateIndex
 CREATE INDEX "oauth_connections_userId_provider_idx" ON "oauth_connections"("userId", "provider");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "oauth_connections_userId_provider_email_key" ON "oauth_connections"("userId", "provider", "email");
+CREATE INDEX "oauth_connections_isHealthy_lastUsedAt_idx" ON "oauth_connections"("isHealthy", "lastUsedAt");
+
+-- CreateIndex
+CREATE INDEX "oauth_connections_expiresAt_isHealthy_idx" ON "oauth_connections"("expiresAt", "isHealthy");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sessions_sessionId_key" ON "sessions"("sessionId");
@@ -116,10 +147,25 @@ CREATE INDEX "usage_userId_timestamp_idx" ON "usage"("userId", "timestamp");
 CREATE INDEX "usage_service_idx" ON "usage"("service");
 
 -- CreateIndex
+CREATE INDEX "usage_tokenId_idx" ON "usage"("tokenId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "service_pricing_service_key" ON "service_pricing"("service");
 
 -- CreateIndex
 CREATE INDEX "service_pricing_service_idx" ON "service_pricing"("service");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "mcp_tokens_tokenHash_key" ON "mcp_tokens"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "mcp_tokens_tokenHash_idx" ON "mcp_tokens"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "mcp_tokens_userId_idx" ON "mcp_tokens"("userId");
+
+-- CreateIndex
+CREATE INDEX "mcp_tokens_createdAt_idx" ON "mcp_tokens"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "linked_emails" ADD CONSTRAINT "linked_emails_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -134,4 +180,7 @@ ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "usage" ADD CONSTRAINT "usage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "usage" ADD CONSTRAINT "usage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "sessions"("sessionId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "usage" ADD CONSTRAINT "usage_tokenId_fkey" FOREIGN KEY ("tokenId") REFERENCES "mcp_tokens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mcp_tokens" ADD CONSTRAINT "mcp_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

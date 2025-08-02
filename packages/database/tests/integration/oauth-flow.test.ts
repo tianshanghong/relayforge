@@ -17,13 +17,7 @@ describe('OAuth Flow Integration', () => {
     });
     
     // Step 2: Create session for MCP connection
-    const identifier = await userService.createSession({
-      userId: user.id,
-      metadata: {
-        userAgent: 'Claude Desktop/1.0',
-        ipAddress: '127.0.0.1',
-      },
-    });
+    const tokenId = await testHelpers.createMcpToken(user.id);
     
     // Step 3: Store OAuth tokens after successful authentication
     const connection = await oauthService.storeTokens({
@@ -43,7 +37,7 @@ describe('OAuth Flow Integration', () => {
     // Step 5: Track usage
     const usage = await usageService.trackUsage({
       userId: user.id,
-      identifier,
+      tokenId,
       service: 'google-calendar',
       method: 'createEvent',
       success: true,
