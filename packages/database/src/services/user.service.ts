@@ -240,6 +240,27 @@ export class UserService {
   }
 
   /**
+   * Get last successful usage for a service
+   */
+  async getLastSuccessfulUsage(userId: string, service: string): Promise<Date | null> {
+    const lastUsage = await prisma.usage.findFirst({
+      where: {
+        userId,
+        service,
+        success: true
+      },
+      orderBy: {
+        timestamp: 'desc'
+      },
+      select: {
+        timestamp: true
+      }
+    });
+    
+    return lastUsage?.timestamp || null;
+  }
+
+  /**
    * Get service pricing information
    */
   async getServicePricing(service: string): Promise<{ pricePerCall: number } | null> {

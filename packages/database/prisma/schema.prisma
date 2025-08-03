@@ -111,6 +111,7 @@ model Usage {
   @@index([userId, timestamp])
   @@index([service])
   @@index([tokenId])
+  @@index([userId, service, success, timestamp(sort: Desc)])
   @@map("usage")
 }
 
