@@ -240,6 +240,26 @@ export class UserService {
   }
 
   /**
+   * Get recent usage count for a service
+   */
+  async getRecentUsage(userId: string, service: string, hoursAgo: number): Promise<number> {
+    const since = new Date();
+    since.setHours(since.getHours() - hoursAgo);
+    
+    const count = await prisma.usage.count({
+      where: {
+        userId,
+        service,
+        timestamp: {
+          gte: since
+        }
+      }
+    });
+    
+    return count;
+  }
+
+  /**
    * Get service pricing information
    */
   async getServicePricing(service: string): Promise<{ pricePerCall: number } | null> {

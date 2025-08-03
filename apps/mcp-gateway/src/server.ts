@@ -10,6 +10,7 @@ import { TokenValidator } from './auth/token-validator';
 import { BillingService } from './services/billing.service';
 import { ServiceRouter } from './routing/service-router';
 import { mcpTokenService } from '@relayforge/database';
+import { registerServiceDiscoveryRoutes } from './routes/service-discovery';
 
 const fastify = Fastify({
   logger: true
@@ -41,6 +42,9 @@ serviceRouter.registerService({
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
+
+// Register service discovery routes
+registerServiceDiscoveryRoutes(fastify, serviceRouter);
 
 // Unified MCP request handler
 async function handleMCPRequest(
