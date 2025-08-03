@@ -283,7 +283,7 @@ fastify.register(async function (fastify) {
         const hasCredits = await billingService.checkCredits(authInfo.userId, service.prefix);
         if (!hasCredits) {
           // Track failed attempt due to insufficient credits
-          await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false);
+          await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false, method);
           
           socket.send(JSON.stringify({
             jsonrpc: '2.0',
@@ -348,7 +348,8 @@ fastify.register(async function (fastify) {
             authInfo.userId,
             service.prefix,
             pricing.pricePerCall,
-            success
+            success,
+            method
           );
         }
       } catch (error) {

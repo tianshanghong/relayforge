@@ -25,7 +25,7 @@ export class BillingService {
     service: string,
     credits: number,
     success: boolean,
-    method?: string
+    method: string
   ): Promise<void> {
     try {
       await prisma.usage.create({
