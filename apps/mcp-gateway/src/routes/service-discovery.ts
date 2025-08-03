@@ -43,11 +43,15 @@ export async function registerServiceDiscoveryRoutes(
 
     // Get all services
     const allServices = serviceRouter.getAllServices();
-    const services = [];
-
-    for (const service of allServices) {
-      // Get methods for this service
-      const methods = await getServiceMethods(service);
+    
+    // Process all services in parallel for better performance
+    const servicePromises = allServices.map(async (service) => {
+      // Get methods, pricing, and usage in parallel
+      const [methods, pricing, lastUsed] = await Promise.all([
+        getServiceMethods(service),
+        userService.getServicePricing(service.prefix),
+        userService.getLastSuccessfulUsage(authInfo.userId, service.prefix)
+      ]);
       
       // Determine auth type
       let authType: 'oauth' | 'client-key' | 'none' = 'none';
@@ -67,13 +71,7 @@ export async function registerServiceDiscoveryRoutes(
         }
       }
 
-      // Get pricing
-      const pricing = await userService.getServicePricing(service.prefix);
-
-      // Get last successful usage for all services
-      const lastUsed = await userService.getLastSuccessfulUsage(authInfo.userId, service.prefix);
-
-      services.push({
+      return {
         id: service.prefix,
         name: service.name,
         methods,
@@ -86,8 +84,10 @@ export async function registerServiceDiscoveryRoutes(
             required_env: `${service.prefix.toUpperCase().replace(/-/g, '_')}_API_KEY`
           }
         })
-      });
-    }
+      };
+    });
+
+    const services = await Promise.all(servicePromises);
 
     // Get linked emails
     const linkedEmailsData = await userService.getLinkedEmails(authInfo.userId);
@@ -116,8 +116,10 @@ async function getServiceMethods(service: any): Promise<string[]> {
     };
 
     const response = await service.adapter.handleHttpRequest('mock', mockRequest);
-    if (response?.result?.tools) {
-      return response.result.tools.map((tool: any) => tool.name);
+    if (response?.result?.tools && Array.isArray(response.result.tools)) {
+      return response.result.tools
+        .filter((tool: any) => tool && typeof tool.name === 'string')
+        .map((tool: any) => tool.name);
     }
   } catch (error) {
     console.error(`Failed to get methods for ${service.name}:`, error);
