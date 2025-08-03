@@ -117,6 +117,9 @@ async function handleMCPRequest(
     // Track failed attempt due to insufficient credits
     await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false, method);
     
+    // Get current credits from database for accurate error message
+    const currentCredits = await billingService.getCurrentCredits(authInfo.userId);
+    
     reply.code(402).send({
       jsonrpc: '2.0',
       id: mcpRequest.id,
@@ -125,9 +128,9 @@ async function handleMCPRequest(
         message: 'Insufficient credits',
         data: {
           service: service.name,
-          userCredits: authInfo.credits,
+          userCredits: currentCredits,
           requiredCredits: pricing.pricePerCall,
-          shortBy: pricing.pricePerCall - authInfo.credits,
+          shortBy: pricing.pricePerCall - currentCredits,
         },
       },
     });
@@ -288,6 +291,9 @@ fastify.register(async function (fastify) {
           // Track failed attempt due to insufficient credits
           await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false, method);
           
+          // Get current credits from database for accurate error message
+          const currentCredits = await billingService.getCurrentCredits(authInfo.userId);
+          
           socket.send(JSON.stringify({
             jsonrpc: '2.0',
             id: mcpRequest.id,
@@ -296,9 +302,9 @@ fastify.register(async function (fastify) {
               message: 'Insufficient credits',
               data: {
                 service: service.name,
-                userCredits: authInfo.credits,
+                userCredits: currentCredits,
                 requiredCredits: pricing.pricePerCall,
-                shortBy: pricing.pricePerCall - authInfo.credits,
+                shortBy: pricing.pricePerCall - currentCredits,
               },
             },
           }));
