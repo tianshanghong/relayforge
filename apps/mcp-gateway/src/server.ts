@@ -112,7 +112,7 @@ async function handleMCPRequest(
   const hasCredits = await billingService.checkCredits(authInfo.userId, service.prefix);
   if (!hasCredits) {
     // Track failed attempt due to insufficient credits
-    await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false);
+    await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false, method);
     
     reply.code(402).send({
       jsonrpc: '2.0',
@@ -179,7 +179,8 @@ async function handleMCPRequest(
       authInfo.userId,
       service.prefix,
       pricing.pricePerCall,
-      success
+      success,
+      method
     );
   }
 }
@@ -225,6 +226,29 @@ fastify.register(async function (fastify) {
         const mcpRequest = JSON.parse(message.toString());
         const method = mcpRequest.method;
         
+        // Special handling for system methods
+        if (method === 'tools/list') {
+          const tools: any[] = [];
+          
+          for (const service of serviceRouter.getAllServices()) {
+            try {
+              const response = await service.adapter.handleWebSocketMessage(authInfo.tokenId, message.toString());
+              if (response && response.result && response.result.tools) {
+                tools.push(...response.result.tools);
+              }
+            } catch (error) {
+              console.error(`Failed to get tools from ${service.name}:`, error);
+            }
+          }
+          
+          socket.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: mcpRequest.id,
+            result: { tools },
+          }));
+          return;
+        }
+        
         // Route to service
         const serviceConfig = await serviceRouter.getServiceWithAuth(method, authInfo.userId);
         if (!serviceConfig) {
@@ -241,18 +265,91 @@ fastify.register(async function (fastify) {
 
         const { service, accessToken } = serviceConfig;
         
-        // Set access token if needed
-        if (accessToken && service.prefix === 'google-calendar') {
-          googleCalendarServer.setAccessToken(accessToken);
+        // Get service pricing
+        const pricing = await billingService.getServicePricing(service.prefix);
+        if (!pricing) {
+          socket.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: mcpRequest.id,
+            error: {
+              code: -32000,
+              message: `Service ${service.name} is not available`,
+            },
+          }));
+          return;
+        }
+
+        // Check credits (without deducting)
+        const hasCredits = await billingService.checkCredits(authInfo.userId, service.prefix);
+        if (!hasCredits) {
+          // Track failed attempt due to insufficient credits
+          await billingService.trackUsage(authInfo.tokenId, authInfo.userId, service.prefix, 0, false);
+          
+          socket.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: mcpRequest.id,
+            error: {
+              code: -32000,
+              message: 'Insufficient credits',
+              data: {
+                service: service.name,
+                userCredits: authInfo.credits,
+                requiredCredits: pricing.pricePerCall,
+                shortBy: pricing.pricePerCall - authInfo.credits,
+              },
+            },
+          }));
+          return;
         }
         
-        const response = await service.adapter.handleWebSocketMessage(
-          authInfo.tokenId,
-          message.toString()
-        );
-        
-        if (response) {
-          socket.send(JSON.stringify(response));
+        let success = false;
+        try {
+          // Set access token if needed
+          if (accessToken && service.prefix === 'google-calendar') {
+            googleCalendarServer.setAccessToken(accessToken);
+          }
+          
+          const response = await service.adapter.handleWebSocketMessage(
+            authInfo.tokenId,
+            message.toString()
+          );
+          
+          if (response) {
+            success = !response.error;
+            socket.send(JSON.stringify(response));
+          }
+
+          // Charge credits only on successful execution
+          if (success) {
+            const charged = await billingService.chargeCredits(authInfo.userId, service.prefix);
+            if (!charged) {
+              console.error('Failed to charge credits after successful execution', {
+                userId: authInfo.userId,
+                service: service.prefix,
+                identifier: authInfo.tokenId,
+              });
+            }
+          }
+        } catch (error) {
+          success = false;
+          socket.send(JSON.stringify({
+            jsonrpc: "2.0",
+            id: mcpRequest.id,
+            error: {
+              code: -32603,
+              message: "Internal error",
+              data: error instanceof Error ? error.message : String(error)
+            }
+          }));
+        } finally {
+          // Track usage for billing and analytics
+          await billingService.trackUsage(
+            authInfo.tokenId,
+            authInfo.userId,
+            service.prefix,
+            pricing.pricePerCall,
+            success
+          );
         }
       } catch (error) {
         socket.send(JSON.stringify({
