@@ -57,6 +57,7 @@ async function main() {
       update: {},
       create: {
         primaryEmail: 'alice@example.com',
+        slug: 'test-alice-123',
         credits: 500, // $5.00 in credits
       },
     });
@@ -149,6 +150,7 @@ async function main() {
       update: {},
       create: {
         primaryEmail: 'bob@example.com',
+        slug: 'test-bob-456',
         credits: 100, // $1.00 in credits
       },
     });

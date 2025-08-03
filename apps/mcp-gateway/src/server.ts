@@ -16,6 +16,9 @@ const fastify = Fastify({
   logger: true
 });
 
+// Register WebSocket support BEFORE defining routes
+fastify.register(fastifyWebsocket);
+
 // Initialize components
 const tokenValidator = new TokenValidator();
 const billingService = new BillingService();
@@ -468,9 +471,6 @@ setInterval(() => {
 // Start the server
 const start = async () => {
   try {
-    // Register WebSocket support
-    await fastify.register(fastifyWebsocket);
-
     const port = parseInt(process.env.PORT || '3001');
     const host = process.env.HOST || 'localhost';
     
