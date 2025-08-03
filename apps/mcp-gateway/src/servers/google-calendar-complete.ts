@@ -90,6 +90,24 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     return this.calendar;
   }
 
+  /**
+   * Convert a datetime from one timezone to another, preserving the absolute moment in time
+   */
+  private convertDateTimeToNewTimezone(
+    dateTime: string, 
+    fromTimezone: string, 
+    toTimezone: string
+  ): string {
+    // Parse the datetime in the source timezone
+    const momentInSourceTz = moment.tz(dateTime, fromTimezone);
+    
+    // Convert to the target timezone (preserves the absolute time)
+    const momentInTargetTz = momentInSourceTz.clone().tz(toTimezone);
+    
+    // Return in ISO format
+    return momentInTargetTz.format();
+  }
+
   async handleRequest(request: any): Promise<any> {
     const { method, params, id } = request;
 
@@ -175,7 +193,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
           },
           {
             name: 'google-calendar.update-event',
-            description: 'Update an existing calendar event',
+            description: 'Update an existing calendar event. Note: When updating only the timezone, the event time is preserved (the absolute moment stays the same, but is displayed in the new timezone).',
             inputSchema: {
               type: 'object',
               properties: {
@@ -210,7 +228,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                 },
                 timeZone: { 
                   type: 'string', 
-                  description: 'Time zone' 
+                  description: 'Time zone (IANA format). When changed alone, preserves the absolute event time.' 
                 },
               },
               required: ['eventId'],
@@ -346,19 +364,54 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
         return this.createErrorResponse(id, -32000, 'Event not found');
       }
 
-      // Handle time updates carefully to maintain consistency
-      if (validated.startTime !== undefined || validated.timeZone !== undefined) {
-        patchData.start = {
-          dateTime: validated.startTime || existingEvent.data.start?.dateTime,
-          timeZone: validated.timeZone || existingEvent.data.start?.timeZone || 'UTC',
-        };
-      }
-      
-      if (validated.endTime !== undefined || validated.timeZone !== undefined) {
-        patchData.end = {
-          dateTime: validated.endTime || existingEvent.data.end?.dateTime,
-          timeZone: validated.timeZone || existingEvent.data.end?.timeZone || 'UTC',
-        };
+      // Check if this is a timezone-only update (needs special handling)
+      const isTimezoneOnlyUpdate = validated.timeZone !== undefined && 
+                                   validated.startTime === undefined && 
+                                   validated.endTime === undefined;
+
+      if (isTimezoneOnlyUpdate) {
+        // Timezone-only update: convert times to preserve absolute moment
+        const existingStartTime = existingEvent.data.start?.dateTime;
+        const existingEndTime = existingEvent.data.end?.dateTime;
+        const existingStartTz = existingEvent.data.start?.timeZone || 'UTC';
+        const existingEndTz = existingEvent.data.end?.timeZone || 'UTC';
+
+        if (existingStartTime) {
+          patchData.start = {
+            dateTime: this.convertDateTimeToNewTimezone(
+              existingStartTime,
+              existingStartTz,
+              validated.timeZone
+            ),
+            timeZone: validated.timeZone,
+          };
+        }
+
+        if (existingEndTime) {
+          patchData.end = {
+            dateTime: this.convertDateTimeToNewTimezone(
+              existingEndTime,
+              existingEndTz,
+              validated.timeZone
+            ),
+            timeZone: validated.timeZone,
+          };
+        }
+      } else {
+        // Handle time updates normally (when times are explicitly provided)
+        if (validated.startTime !== undefined || validated.timeZone !== undefined) {
+          patchData.start = {
+            dateTime: validated.startTime || existingEvent.data.start?.dateTime,
+            timeZone: validated.timeZone || existingEvent.data.start?.timeZone || 'UTC',
+          };
+        }
+        
+        if (validated.endTime !== undefined || validated.timeZone !== undefined) {
+          patchData.end = {
+            dateTime: validated.endTime || existingEvent.data.end?.dateTime,
+            timeZone: validated.timeZone || existingEvent.data.end?.timeZone || 'UTC',
+          };
+        }
       }
     }
 
