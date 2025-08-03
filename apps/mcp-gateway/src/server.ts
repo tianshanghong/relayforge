@@ -5,7 +5,7 @@ import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world';
-import { GoogleCalendarSimpleServer } from './servers/google-calendar-simple';
+import { GoogleCalendarCompleteServer } from './servers/google-calendar-complete';
 import { TokenValidator } from './auth/token-validator';
 import { BillingService } from './services/billing.service';
 import { ServiceRouter } from './routing/service-router';
@@ -22,7 +22,7 @@ const billingService = new BillingService();
 const serviceRouter = new ServiceRouter();
 
 // Register services
-const googleCalendarServer = new GoogleCalendarSimpleServer();
+const googleCalendarServer = new GoogleCalendarCompleteServer();
 serviceRouter.registerService({
   name: 'Google Calendar',
   prefix: 'google-calendar',
