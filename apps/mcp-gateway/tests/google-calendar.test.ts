@@ -46,13 +46,14 @@ describe('GoogleCalendarCompleteServer', () => {
 
       const response = await server.handleRequest(request);
 
-      expect(response.result.tools).toHaveLength(5);
+      expect(response.result.tools).toHaveLength(6);
       expect(response.result.tools.map((t: any) => t.name)).toEqual([
         'google-calendar.create-event',
         'google-calendar.update-event',
         'google-calendar.delete-event',
         'google-calendar.get-event',
         'google-calendar.list-events',
+        'google-calendar.list-calendars',
       ]);
     });
   });

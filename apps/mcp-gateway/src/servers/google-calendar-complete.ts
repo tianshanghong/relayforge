@@ -5,6 +5,7 @@ import * as moment from 'moment-timezone';
 
 // Input validation schemas
 const CreateEventSchema = z.object({
+  calendarId: z.string().optional().default('primary'),
   summary: z.string().min(1, 'Event title is required'),
   description: z.string().optional(),
   startTime: z.string().refine((val) => {
@@ -31,6 +32,7 @@ const CreateEventSchema = z.object({
 
 const UpdateEventSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
+  calendarId: z.string().optional().default('primary'),
   summary: z.string().optional(),
   description: z.string().optional(),
   startTime: z.string().optional().refine((val) => {
@@ -59,19 +61,27 @@ const UpdateEventSchema = z.object({
 
 const DeleteEventSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
+  calendarId: z.string().optional().default('primary'),
   sendNotifications: z.boolean().optional().default(true),
 });
 
 const GetEventSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
+  calendarId: z.string().optional().default('primary'),
 });
 
 const ListEventsSchema = z.object({
+  calendarId: z.string().optional().default('primary'),
   maxResults: z.number().min(1).max(100).optional().default(10),
   timeMin: z.string().optional(),
   timeMax: z.string().optional(),
   query: z.string().optional(),
   showDeleted: z.boolean().optional().default(false),
+});
+
+const ListCalendarsSchema = z.object({
+  showHidden: z.boolean().optional().default(false),
+  minAccessRole: z.enum(['freeBusyReader', 'reader', 'writer', 'owner']).optional(),
 });
 
 export class GoogleCalendarCompleteServer implements MCPServerHandler {
@@ -138,6 +148,9 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
         case 'google-calendar.list-events':
           return await this.listEvents(id, params);
         
+        case 'google-calendar.list-calendars':
+          return await this.listCalendars(id, params);
+        
         default:
           return this.createErrorResponse(id, -32601, `Method not found: ${method}`);
       }
@@ -158,6 +171,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             inputSchema: {
               type: 'object',
               properties: {
+                calendarId: { 
+                  type: 'string', 
+                  description: 'Calendar ID (default: "primary"). Use list-calendars to see available calendars.' 
+                },
                 summary: { 
                   type: 'string', 
                   description: 'Event title (required)' 
@@ -200,6 +217,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                 eventId: { 
                   type: 'string', 
                   description: 'ID of the event to update (required)' 
+                },
+                calendarId: { 
+                  type: 'string', 
+                  description: 'Calendar ID (default: "primary"). Use list-calendars to see available calendars.' 
                 },
                 summary: { 
                   type: 'string', 
@@ -244,6 +265,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                   type: 'string', 
                   description: 'ID of the event to delete (required)' 
                 },
+                calendarId: { 
+                  type: 'string', 
+                  description: 'Calendar ID (default: "primary"). Use list-calendars to see available calendars.' 
+                },
                 sendNotifications: { 
                   type: 'boolean', 
                   description: 'Whether to send notifications about the deletion (default: true)' 
@@ -262,6 +287,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                   type: 'string', 
                   description: 'ID of the event to retrieve (required)' 
                 },
+                calendarId: { 
+                  type: 'string', 
+                  description: 'Calendar ID (default: "primary"). Use list-calendars to see available calendars.' 
+                },
               },
               required: ['eventId'],
             },
@@ -272,6 +301,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             inputSchema: {
               type: 'object',
               properties: {
+                calendarId: { 
+                  type: 'string', 
+                  description: 'Calendar ID (default: "primary"). Use list-calendars to see available calendars.' 
+                },
                 maxResults: { 
                   type: 'number', 
                   description: 'Maximum number of events to return (1-100, default: 10)' 
@@ -291,6 +324,24 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                 showDeleted: { 
                   type: 'boolean', 
                   description: 'Whether to include deleted events (default: false)' 
+                },
+              },
+            },
+          },
+          {
+            name: 'google-calendar.list-calendars',
+            description: 'List all calendars accessible to the user',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                showHidden: { 
+                  type: 'boolean', 
+                  description: 'Show hidden calendars (default: false)' 
+                },
+                minAccessRole: { 
+                  type: 'string', 
+                  enum: ['freeBusyReader', 'reader', 'writer', 'owner'],
+                  description: 'Filter by minimum access role' 
                 },
               },
             },
@@ -319,7 +370,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     };
 
     const response = await this.getCalendar().events.insert({
-      calendarId: 'primary',
+      calendarId: validated.calendarId,
       requestBody: event,
       sendNotifications: true,
     });
@@ -356,7 +407,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     if (validated.startTime !== undefined || validated.endTime !== undefined || validated.timeZone !== undefined) {
       // We need existing event data to properly handle partial time updates
       const existingEvent = await this.getCalendar().events.get({
-        calendarId: 'primary',
+        calendarId: validated.calendarId,
         eventId: validated.eventId,
       });
 
@@ -369,7 +420,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                                    validated.startTime === undefined && 
                                    validated.endTime === undefined;
 
-      if (isTimezoneOnlyUpdate) {
+      if (isTimezoneOnlyUpdate && validated.timeZone) {
         // Timezone-only update: convert times to preserve absolute moment
         const existingStartTime = existingEvent.data.start?.dateTime;
         const existingEndTime = existingEvent.data.end?.dateTime;
@@ -418,7 +469,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     try {
       // Use patch method for partial updates
       const response = await this.getCalendar().events.patch({
-        calendarId: 'primary',
+        calendarId: validated.calendarId,
         eventId: validated.eventId,
         requestBody: patchData,
         sendNotifications: true,
@@ -449,7 +500,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const validated = DeleteEventSchema.parse(params);
     
     await this.getCalendar().events.delete({
-      calendarId: 'primary',
+      calendarId: validated.calendarId,
       eventId: validated.eventId,
       sendNotifications: validated.sendNotifications,
     });
@@ -472,7 +523,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const validated = GetEventSchema.parse(params);
     
     const response = await this.getCalendar().events.get({
-      calendarId: 'primary',
+      calendarId: validated.calendarId,
       eventId: validated.eventId,
     });
 
@@ -498,7 +549,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const validated = ListEventsSchema.parse(params || {});
     
     const response = await this.getCalendar().events.list({
-      calendarId: 'primary',
+      calendarId: validated.calendarId,
       maxResults: validated.maxResults,
       timeMin: validated.timeMin,
       timeMax: validated.timeMax,
@@ -525,6 +576,47 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const resultText = events.length === 0 
       ? 'No events found' 
       : `Found ${events.length} event${events.length === 1 ? '' : 's'}:\n\n${JSON.stringify(formattedEvents, null, 2)}`;
+
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text: resultText,
+          },
+        ],
+      },
+    };
+  }
+
+  private async listCalendars(id: any, params: any) {
+    const validated = ListCalendarsSchema.parse(params || {});
+    
+    const response = await this.getCalendar().calendarList.list({
+      showHidden: validated.showHidden,
+      minAccessRole: validated.minAccessRole,
+    });
+
+    const calendars = response.data.items || [];
+    
+    const formattedCalendars = calendars.map(calendar => ({
+      id: calendar.id,
+      summary: calendar.summary || 'Unnamed Calendar',
+      description: calendar.description,
+      primary: calendar.primary || false,
+      accessRole: calendar.accessRole,
+      backgroundColor: calendar.backgroundColor,
+      foregroundColor: calendar.foregroundColor,
+      timeZone: calendar.timeZone,
+      selected: calendar.selected,
+      hidden: calendar.hidden,
+    }));
+
+    const resultText = calendars.length === 0 
+      ? 'No calendars found' 
+      : `Found ${calendars.length} calendar${calendars.length === 1 ? '' : 's'}:\n\n${JSON.stringify(formattedCalendars, null, 2)}`;
 
     return {
       jsonrpc: '2.0',
@@ -588,6 +680,16 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     // Handle Google API errors
     if (error.response?.data?.error) {
       const apiError = error.response.data.error;
+      
+      // Special handling for calendar not found errors
+      if (error.response.status === 404 && apiError.message?.includes('Calendar not found')) {
+        return this.createErrorResponse(
+          id,
+          -32000,
+          `Calendar not found. Use list-calendars to see available calendars.`
+        );
+      }
+      
       return this.createErrorResponse(
         id,
         -32000,
