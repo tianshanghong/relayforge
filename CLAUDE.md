@@ -3,7 +3,7 @@
 ## What it is
 Hosted MCP server platform that provides access to multiple services through a single URL. Users bring their own API keys for non-OAuth services.
 
-**🔒 Security Update**: We're implementing secure, stable MCP URLs with proper bearer token authentication instead of session IDs in URLs.
+**✅ Security Implementation**: Stable MCP URLs with bearer token authentication are now fully implemented.
 
 ## Tech Stack
 - **Monorepo**: Turbo + pnpm
@@ -66,9 +66,10 @@ Primary Account: alice@gmail.com
 1. **Initial OAuth Authentication**:
    - User authenticates via OAuth (Google/GitHub/Slack)
    - System creates/finds user account based on email
-   - User account MUST exist before session creation
-   - System generates secure session ID linked to user
-   - Returns MCP URL: `https://relayforge.com/mcp/{session-id}`
+   - User account MUST exist before MCP token creation
+   - System generates memorable slug for user (e.g., "happy-dolphin-42")
+   - Creates MCP bearer token for new users
+   - Returns stable MCP URL: `https://relayforge.com/mcp/u/{slug}`
 
 2. **Automatic Account Merging** (Prevents Credit Abuse):
    - When authenticated user adds new OAuth provider
@@ -98,15 +99,18 @@ packages/oauth-service/
 ### 2. MCP Gateway
 ```typescript
 // Single endpoint for all services
-POST /mcp/{session-id}
-{
+POST /mcp/u/{slug}
+Headers: {
+  "Authorization": "Bearer mcp_live_xxxxx"
+}
+Body: {
   "method": "google_calendar.create_event",  // Service identified by prefix
   "params": { ... }
 }
 
 // Gateway routes internally
 Router: {
-  "google_calendar.*" → Google Calendar MCP Server
+  "google-calendar.*" → Google Calendar MCP Server
   "github.*" → GitHub MCP Server  
   "openai.*" → OpenAI MCP Server
 }
@@ -115,7 +119,10 @@ Router: {
 ### 3. Service Discovery
 ```typescript
 // Our custom API (not part of MCP protocol)
-GET /mcp/{session-id}/services
+GET /api/services
+Headers: {
+  "Authorization": "Bearer mcp_live_xxxxx"
+}
 
 Response: {
   "services": [
@@ -165,7 +172,7 @@ const servicePricing = {
 
 ## Client Configuration
 
-### Secure Authentication Setup (New)
+### Secure Authentication Setup
 ```json
 // User's Claude/Cursor config
 {
@@ -298,12 +305,14 @@ async function userAuthenticationFlow() {
     user.slug = await generateUniqueSlug(); // e.g., "happy-dolphin-42"
   }
   
-  // 4. Create MCP token if first time or requested
+  // 4. Create MCP token for new users
   let mcpToken;
-  if (!existingMapping || requestNewToken) {
-    const { token, hash } = await generateMcpToken();
-    await saveMcpToken(user.id, hash, tokenName);
-    mcpToken = token; // Only returned once!
+  if (!existingMapping) {
+    mcpToken = await mcpTokenService.createToken({
+      userId: user.id,
+      name: 'Default Token'
+    });
+    // mcpToken.plainToken is only available on creation!
   }
   
   // 5. Create web session for UI
@@ -316,7 +325,7 @@ async function userAuthenticationFlow() {
   return {
     mcpUrl: `https://relayforge.com/mcp/u/${user.slug}`,
     mcpToken: mcpToken, // Only shown on creation!
-    webSessionId: session.id, // For web UI only
+    sessionId: session.sessionId, // For web UI only
     message: existingMapping ? "Welcome back!" : "Account created!"
   };
 }
@@ -414,24 +423,44 @@ class MCPGateway {
 }
 ```
 
-## Implementation Phases
+## API Endpoints
 
-### Phase 1: Core Platform
+### MCP Endpoints
+- `POST /mcp/u/{slug}` - Main MCP request endpoint (requires Bearer token)
+- `GET /mcp/u/{slug}/ws` - WebSocket endpoint for streaming (requires Bearer token)
+
+### Token Management
+- `POST /api/tokens/revoke` - Revoke an MCP token (requires Bearer token)
+  ```json
+  {
+    "tokenId": "token-uuid-here"
+  }
+  ```
+
+### Health Check
+- `GET /health` - Gateway health check (no auth required)
+
+## Implementation Status
+
+### ✅ Completed (Phase 1)
 - User accounts with email linking
-- OAuth service (Google only)
+- OAuth service (Google provider implemented)
+- Bearer token authentication with stable URLs
 - Basic gateway routing
 - Credit system
-- Service discovery API
+- Session management
+- OAuth token refresh with automatic retry
+- WebSocket support
 
-### Phase 2: First Services
+### 🚧 In Progress (Phase 2)
 - Google Calendar MCP (OAuth)
-- OpenAI MCP (client-key)
-- GitHub MCP (OAuth)
-- Usage tracking
+- Service discovery API
+- Usage tracking and billing
 
-### Phase 3: Service Expansion
-- 10+ OAuth services
-- 20+ API key services
+### 📋 Planned (Phase 3)
+- Additional OAuth providers (GitHub, Slack)
+- API key services (OpenAI, Anthropic, etc.)
+- Token management UI
 - Bulk credit packages
 - Dashboard improvements
 

@@ -2,15 +2,17 @@
 
 ## Overview
 
-The Session Management API provides endpoints for creating, managing, and validating user sessions in RelayForge. Sessions are used to authenticate users when accessing MCP services through the gateway.
+The Session Management API provides endpoints for creating, managing, and validating user sessions in RelayForge. 
+
+**Important**: Sessions are used for web UI authentication only. MCP access uses bearer tokens through the MCP Token API.
 
 ### Current Status
 
-⚠️ **Most endpoints are temporarily unavailable** while we implement JWT authentication. Currently available endpoints:
-- `GET /api/sessions/:sessionId/validate` - Used by the MCP gateway (no auth required)
-- `POST /api/sessions/cleanup` - Admin endpoint (requires `x-admin-key` header)
+✅ **Session management is fully implemented**. Sessions are used for web UI authentication, while MCP access uses bearer tokens.
 
-All other endpoints return `503 Service Unavailable` until JWT authentication is complete.
+Available endpoints:
+- `GET /api/sessions/:sessionId/validate` - Validates a session (used internally)
+- `POST /api/sessions/cleanup` - Admin endpoint for cleanup (requires `x-admin-key` header)
 
 ## Base URL
 
@@ -20,7 +22,7 @@ https://api.relayforge.xyz/api/sessions
 
 ## Authentication
 
-**IMPORTANT**: The Session Management API is currently unavailable. JWT authentication is being implemented and will be available soon. All authenticated endpoints return `503 Service Unavailable` until the JWT implementation is complete.
+Session management endpoints are primarily for internal use. The web UI uses session cookies for authentication, while external API access will use bearer tokens when implemented.
 
 ## Endpoints
 
@@ -286,32 +288,24 @@ Common error codes:
 
 ## Integration with MCP Gateway
 
-Once a session is created, the `sessionUrl` can be used as the MCP server URL in Claude or other MCP clients:
+Sessions are used for web UI authentication only. For MCP access, users should use bearer tokens:
 
 ```json
 {
   "mcpServers": {
     "relayforge": {
-      "url": "https://relayforge.xyz/mcp/abc123xyz..."
+      "url": "https://relayforge.xyz/mcp/u/happy-dolphin-42",
+      "headers": {
+        "Authorization": "Bearer mcp_live_xxxxxxxxxxxxx"
+      }
     }
   }
 }
 ```
 
-The gateway will validate the session and provide access to all configured MCP services based on the user's account status and available credits.
+The gateway validates bearer tokens (not sessions) for MCP requests. See the MCP Token API documentation for details on obtaining and managing tokens.
 
-## Future JWT Authentication
+## Related Documentation
 
-When JWT authentication is implemented, the API will use standard Bearer token authentication:
-
-```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-JWT tokens will be obtained through the OAuth flow and will include:
-- User ID and email
-- Permissions and roles
-- Token expiration
-- Refresh token for obtaining new access tokens
-
-See the [Security Enhancement Plan](https://github.com/tianshanghong/relayforge/issues) for detailed implementation plans.
+- [MCP Token API](./mcp-token.md) - For managing bearer tokens used with MCP access
+- [OAuth Flow](./oauth.md) - For understanding the authentication flow

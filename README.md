@@ -18,16 +18,39 @@ Setting up MCP servers requires:
 
 ## Solution
 
-RelayForge provides all MCP services through a single session-based endpoint:
+RelayForge provides all MCP services through a single stable endpoint with bearer token authentication:
 ```
-https://relayforge.com/mcp/{session-id}
+URL: https://relayforge.com/mcp/u/{your-slug}
+Header: Authorization: Bearer mcp_live_{your-token}
 ```
 
 **Key Benefits:**
 - **One URL**: Access all MCP services through a single endpoint
+- **Stable Configuration**: Your URL never changes, even after re-login
 - **OAuth Handled**: We manage authentication for Google Calendar, GitHub, Slack, etc.
 - **No Local Setup**: Use MCP servers without installing anything
 - **Pay Per Use**: Only pay for what you use, transparent per-call pricing
+
+### Example Configuration
+
+```json
+// Claude Desktop or Cursor configuration
+{
+  "mcpServers": {
+    "relayforge": {
+      "url": "https://relayforge.com/mcp/u/happy-dolphin-42",
+      "headers": {
+        "Authorization": "Bearer mcp_live_xxxxxxxxxxxxx"
+      },
+      "env": {
+        // Optional: API keys for services you want to use
+        "OPENAI_API_KEY": "sk-...",
+        "ANTHROPIC_API_KEY": "..."
+      }
+    }
+  }
+}
+```
 
 ## Architecture
 
