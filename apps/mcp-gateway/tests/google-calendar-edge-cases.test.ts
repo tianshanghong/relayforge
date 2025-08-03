@@ -1,12 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleCalendarCompleteServer } from '../src/servers/google-calendar-complete';
 
 describe('GoogleCalendarCompleteServer - Edge Cases', () => {
   let server: GoogleCalendarCompleteServer;
+  let mockEvents: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     server = new GoogleCalendarCompleteServer();
     server.setAccessToken('test-token');
+    
+    // Get the global mock
+    mockEvents = (global as any).mockGoogleCalendarEvents;
   });
 
   describe('Large Event Lists', () => {
@@ -20,7 +25,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         status: 'confirmed',
       }));
 
-      vi.spyOn(server['getCalendar']().events, 'list').mockResolvedValue({
+      mockEvents.list.mockResolvedValue({
         data: { items: largeEventList },
         status: 200,
         statusText: 'OK',
@@ -47,7 +52,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         end: { dateTime: '2024-01-15T11:00:00Z' },
       }));
 
-      const listMock = vi.spyOn(server['getCalendar']().events, 'list').mockResolvedValue({
+      const listMock = vi.spyOn(mockEvents, 'list').mockResolvedValue({
         data: { items: eventList.slice(0, 10) },
         status: 200,
         statusText: 'OK',
@@ -72,7 +77,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       const timeoutError = new Error('Network timeout');
       (timeoutError as any).code = 'ETIMEDOUT';
 
-      vi.spyOn(server['getCalendar']().events, 'insert').mockRejectedValue(timeoutError);
+      vi.spyOn(mockEvents, 'insert').mockRejectedValue(timeoutError);
 
       const response = await server.handleRequest({
         method: 'google-calendar.create-event',
@@ -101,7 +106,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         }, 100);
       });
 
-      vi.spyOn(server['getCalendar']().events, 'insert').mockImplementation(() => slowPromise as any);
+      vi.spyOn(mockEvents, 'insert').mockImplementation(() => slowPromise as any);
 
       const response = await server.handleRequest({
         method: 'google-calendar.create-event',
@@ -120,7 +125,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
 
   describe('Malformed API Responses', () => {
     it('should handle missing event data gracefully', async () => {
-      vi.spyOn(server['getCalendar']().events, 'get').mockResolvedValue({
+      vi.spyOn(mockEvents, 'get').mockResolvedValue({
         data: null,
         status: 200,
         statusText: 'OK',
@@ -139,7 +144,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
     });
 
     it('should handle undefined items in list response', async () => {
-      vi.spyOn(server['getCalendar']().events, 'list').mockResolvedValue({
+      vi.spyOn(mockEvents, 'list').mockResolvedValue({
         data: { items: undefined },
         status: 200,
         statusText: 'OK',
@@ -157,7 +162,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
     });
 
     it('should handle events with missing fields', async () => {
-      vi.spyOn(server['getCalendar']().events, 'list').mockResolvedValue({
+      vi.spyOn(mockEvents, 'list').mockResolvedValue({
         data: {
           items: [
             { id: 'event-1' }, // Missing all fields except id
@@ -192,7 +197,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         end: { dateTime: '2024-03-10T02:30:00', timeZone: 'America/New_York' },
       };
 
-      vi.spyOn(server['getCalendar']().events, 'get').mockResolvedValue({
+      vi.spyOn(mockEvents, 'get').mockResolvedValue({
         data: existingEvent,
         status: 200,
         statusText: 'OK',
@@ -200,7 +205,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         config: {},
       } as any);
 
-      const patchMock = vi.spyOn(server['getCalendar']().events, 'patch').mockResolvedValue({
+      const patchMock = vi.spyOn(mockEvents, 'patch').mockResolvedValue({
         data: { ...existingEvent, start: { ...existingEvent.start, timeZone: 'UTC' } },
         status: 200,
         statusText: 'OK',
@@ -263,7 +268,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         data: { error: { message: 'Invalid Credentials' } },
       };
 
-      vi.spyOn(server['getCalendar']().events, 'list').mockRejectedValue(authError);
+      vi.spyOn(mockEvents, 'list').mockRejectedValue(authError);
 
       const response = await server.handleRequest({
         method: 'google-calendar.list-events',
@@ -294,7 +299,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
     it('should handle extremely long event summaries', async () => {
       const longSummary = 'A'.repeat(1000);
 
-      const insertMock = vi.spyOn(server['getCalendar']().events, 'insert').mockResolvedValue({
+      const insertMock = vi.spyOn(mockEvents, 'insert').mockResolvedValue({
         data: { id: 'event-123', summary: longSummary },
         status: 200,
         statusText: 'OK',
@@ -321,7 +326,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
     });
 
     it('should handle events at year boundaries', async () => {
-      const insertMock = vi.spyOn(server['getCalendar']().events, 'insert').mockResolvedValue({
+      const insertMock = vi.spyOn(mockEvents, 'insert').mockResolvedValue({
         data: { id: 'event-123', summary: 'New Year Event' },
         status: 200,
         statusText: 'OK',
@@ -368,7 +373,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
         data: { error: { message: 'Calendar not found' } },
       };
 
-      vi.spyOn(server['getCalendar']().events, 'list').mockRejectedValue(notFoundError);
+      vi.spyOn(mockEvents, 'list').mockRejectedValue(notFoundError);
 
       const response = await server.handleRequest({
         method: 'google-calendar.list-events',
@@ -383,7 +388,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
 
   describe('Concurrent Operations', () => {
     it('should handle multiple simultaneous requests', async () => {
-      const insertMock = vi.spyOn(server['getCalendar']().events, 'insert')
+      const insertMock = vi.spyOn(mockEvents, 'insert')
         .mockImplementation((params: any) => {
           return Promise.resolve({
             data: { id: `event-${Date.now()}`, summary: params.requestBody.summary },

@@ -19,12 +19,21 @@ export class BillingService {
     return this.userService.getServicePricing(service);
   }
 
+  async getCurrentCredits(userId: string): Promise<number> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { credits: true },
+    });
+    return user?.credits ?? 0;
+  }
+
   async trackUsage(
     tokenId: string,
     userId: string,
     service: string,
     credits: number,
-    success: boolean
+    success: boolean,
+    method: string
   ): Promise<void> {
     try {
       await prisma.usage.create({
@@ -32,6 +41,7 @@ export class BillingService {
           tokenId,
           userId,
           service,
+          method,
           credits,
           success,
         },
