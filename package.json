@@ -17,7 +17,9 @@
     "db:stop": "docker-compose down",
     "db:reset": "docker-compose down -v && docker-compose up -d postgres",
     "db:migrate": "cd packages/database && pnpm db:migrate",
-    "db:seed": "cd packages/database && pnpm db:seed"
+    "db:seed": "cd packages/database && pnpm db:seed",
+    "generate-keys": "tsx scripts/generate-env-keys.ts",
+    "validate-env": "tsx scripts/validate-env.ts"
   },
   "packageManager": "pnpm@9.12.3",
   "devDependencies": {
@@ -25,6 +27,6 @@
     "typescript": "^5.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

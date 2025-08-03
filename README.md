@@ -61,19 +61,57 @@ Header: Authorization: Bearer mcp_live_{your-token}
 
 ## Getting Started
 
+### Prerequisites
+- Node.js 20+
+- PostgreSQL 14+
+- pnpm 9+
+
 ### Development
+
+#### Quick Start
 ```bash
-# Install dependencies
+# 1. Clone the repository
+git clone https://github.com/tianshanghong/relayforge.git
+cd relayforge
+
+# 2. Install dependencies
 pnpm install
 
-# Start development servers
+# 3. Set up environment variables
+cp .env.example .env
+cp apps/oauth-service/.env.example apps/oauth-service/.env
+cp apps/frontend/.env.example apps/frontend/.env
+
+# 4. Generate secure keys
+pnpm generate-keys
+
+# 5. Update .env files with your values (database, OAuth credentials, etc.)
+
+# 6. Start PostgreSQL (if using Docker)
+pnpm db:start
+
+# 7. Run database migrations
+pnpm db:migrate
+
+# 8. Seed the database (optional)
+pnpm db:seed
+
+# 9. Validate your environment
+pnpm validate-env
+
+# 10. Start development servers
 pnpm dev
 ```
+
+See [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md) for detailed configuration instructions.
 
 ### Production
 ```bash
 # Build all services
 pnpm build
+
+# Run with production environment
+NODE_ENV=production pnpm start
 ```
 
 ## Contributing

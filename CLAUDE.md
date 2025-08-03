@@ -447,20 +447,26 @@ class MCPGateway {
 - OAuth service (Google provider implemented)
 - Bearer token authentication with stable URLs
 - Basic gateway routing
-- Credit system
+- Credit system with initial $5 free credits
 - Session management
 - OAuth token refresh with automatic retry
 - WebSocket support
+- Google Calendar MCP server (full CRUD operations)
+- Service discovery API (/api/services)
+- Usage tracking and billing (with method-level tracking)
+- Real-time credit display in error messages
+- Comprehensive test coverage for billing flows
 
 ### 🚧 In Progress (Phase 2)
-- Google Calendar MCP (OAuth)
-- Service discovery API
-- Usage tracking and billing
+- Environment variable documentation and setup
+- Token management UI
+- Additional OAuth providers (GitHub, Slack)
 
 ### 📋 Planned (Phase 3)
-- Additional OAuth providers (GitHub, Slack)
 - API key services (OpenAI, Anthropic, etc.)
-- Token management UI
+- Structured logging (Issue #33)
+- End-to-end testing setup
+- Monitoring and observability
 - Bulk credit packages
 - Dashboard improvements
 
