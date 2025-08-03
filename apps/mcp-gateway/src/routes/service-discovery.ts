@@ -49,9 +49,9 @@ export async function registerServiceDiscoveryRoutes(
       // Get methods for this service
       const methods = await getServiceMethods(service);
       
-      // Determine auth type and status
+      // Determine auth type
       let authType: 'oauth' | 'client-key' | 'none' = 'none';
-      let status: 'connected' | 'disconnected' | 'active' | 'inactive' = 'inactive';
+      let isConnected: boolean | undefined = undefined;
       
       if (service.requiresAuth) {
         // Check if it's an OAuth service
@@ -60,29 +60,27 @@ export async function registerServiceDiscoveryRoutes(
           authType = 'oauth';
           // Check if user has connected this OAuth provider
           const tokens = await oauthService.getTokens(authInfo.userId, provider);
-          const isConnected = tokens !== null && tokens.expiresAt > new Date();
-          status = isConnected ? 'connected' : 'disconnected';
+          isConnected = tokens !== null && tokens.expiresAt > new Date();
         } else {
           // It's a client-key service
           authType = 'client-key';
-          // Check recent usage to determine if active
-          const recentUsage = await userService.getRecentUsage(authInfo.userId, service.prefix, 24);
-          status = recentUsage > 0 ? 'active' : 'inactive';
         }
-      } else {
-        status = 'active'; // No auth required services are always active
       }
 
       // Get pricing
       const pricing = await userService.getServicePricing(service.prefix);
+
+      // Get last successful usage for all services
+      const lastUsed = await userService.getLastSuccessfulUsage(authInfo.userId, service.prefix);
 
       services.push({
         id: service.prefix,
         name: service.name,
         methods,
         auth: authType,
-        status,
+        ...(authType === 'oauth' && isConnected !== undefined && { connected: isConnected }),
         price_per_call: pricing?.pricePerCall || 0,
+        last_used: lastUsed,
         ...(authType === 'client-key' && {
           setup: {
             required_env: `${service.prefix.toUpperCase().replace(/-/g, '_')}_API_KEY`

@@ -240,23 +240,24 @@ export class UserService {
   }
 
   /**
-   * Get recent usage count for a service
+   * Get last successful usage for a service
    */
-  async getRecentUsage(userId: string, service: string, hoursAgo: number): Promise<number> {
-    const since = new Date();
-    since.setHours(since.getHours() - hoursAgo);
-    
-    const count = await prisma.usage.count({
+  async getLastSuccessfulUsage(userId: string, service: string): Promise<Date | null> {
+    const lastUsage = await prisma.usage.findFirst({
       where: {
         userId,
         service,
-        timestamp: {
-          gte: since
-        }
+        success: true
+      },
+      orderBy: {
+        timestamp: 'desc'
+      },
+      select: {
+        timestamp: true
       }
     });
     
-    return count;
+    return lastUsage?.timestamp || null;
   }
 
   /**
