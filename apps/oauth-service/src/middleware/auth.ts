@@ -49,7 +49,7 @@ export async function requireAdmin(
   }
 
   // Validate admin key
-  const validAdminKey = process.env.ADMIN_KEY || process.env.ADMIN_SECRET;
+  const validAdminKey = process.env.ADMIN_KEY;
   
   if (!validAdminKey) {
     request.log.error('ADMIN_KEY not configured in environment');

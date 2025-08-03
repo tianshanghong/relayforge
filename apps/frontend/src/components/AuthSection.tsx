@@ -51,7 +51,8 @@ export function AuthSection() {
     }
 
     // Fetch OAuth providers
-    fetch('http://localhost:3002/oauth/providers')
+    const oauthServiceUrl = import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:3002';
+    fetch(`${oauthServiceUrl}/oauth/providers`)
       .then(res => res.json())
       .then(data => {
         setProviders(data.providers || []);
@@ -136,20 +137,23 @@ export function AuthSection() {
       </p>
       
       <div className="space-y-3">
-        {providers.map((provider) => (
-          <a
-            key={provider.name}
-            href={`http://localhost:3002${provider.authUrl}`}
-            className="flex items-center justify-center w-full px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-          >
+        {providers.map((provider) => {
+          const oauthServiceUrl = import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:3002';
+          return (
+            <a
+              key={provider.name}
+              href={`${oauthServiceUrl}${provider.authUrl}`}
+              className="flex items-center justify-center w-full px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            >
             <img
               src={provider.icon}
               alt={provider.displayName}
               className="w-5 h-5 mr-3"
             />
-            Continue with {provider.displayName}
-          </a>
-        ))}
+              Continue with {provider.displayName}
+            </a>
+          );
+        })}
       </div>
       
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
