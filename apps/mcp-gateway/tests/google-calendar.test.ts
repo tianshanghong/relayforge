@@ -5,6 +5,7 @@ import { GoogleCalendarCompleteServer } from '../src/servers/google-calendar-com
 const mockEvents = {
   insert: vi.fn(),
   update: vi.fn(),
+  patch: vi.fn(),
   delete: vi.fn(),
   get: vi.fn(),
   list: vi.fn(),
@@ -189,7 +190,7 @@ describe('GoogleCalendarCompleteServer', () => {
       };
 
       mockEvents.get.mockResolvedValue({ data: existingEvent });
-      mockEvents.update.mockResolvedValue({ data: updatedEvent });
+      mockEvents.patch.mockResolvedValue({ data: updatedEvent });
 
       const request = {
         jsonrpc: '2.0',
@@ -205,11 +206,9 @@ describe('GoogleCalendarCompleteServer', () => {
 
       expect(response.error).toBeUndefined();
       expect(response.result.content[0].text).toContain('Event updated successfully');
-      expect(mockEvents.get).toHaveBeenCalledWith({
-        calendarId: 'primary',
-        eventId: 'event-123',
-      });
-      expect(mockEvents.update).toHaveBeenCalledWith({
+      // Should NOT call get since we're only updating summary
+      expect(mockEvents.get).not.toHaveBeenCalled();
+      expect(mockEvents.patch).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'event-123',
         requestBody: expect.objectContaining({
@@ -219,8 +218,45 @@ describe('GoogleCalendarCompleteServer', () => {
       });
     });
 
+    it('should not fetch existing event when only updating non-time fields', async () => {
+      const updatedEvent = {
+        id: 'event-123',
+        summary: 'Updated Meeting',
+        description: 'Updated description',
+      };
+
+      mockEvents.patch.mockResolvedValue({ data: updatedEvent });
+
+      const request = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'google-calendar.update-event',
+        params: {
+          eventId: 'event-123',
+          summary: 'Updated Meeting',
+          description: 'Updated description',
+        },
+      };
+
+      const response = await server.handleRequest(request);
+
+      expect(response.error).toBeUndefined();
+      expect(response.result.content[0].text).toContain('Event updated successfully');
+      // Should NOT call get since we're not updating time fields
+      expect(mockEvents.get).not.toHaveBeenCalled();
+      expect(mockEvents.patch).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        eventId: 'event-123',
+        requestBody: {
+          summary: 'Updated Meeting',
+          description: 'Updated description',
+        },
+        sendNotifications: true,
+      });
+    });
+
     it('should return error for non-existent event', async () => {
-      mockEvents.get.mockResolvedValue({ data: null });
+      mockEvents.patch.mockRejectedValue({ response: { status: 404 } });
 
       const request = {
         jsonrpc: '2.0',

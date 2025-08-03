@@ -1,31 +1,60 @@
 import { MCPServerHandler } from '@relayforge/mcp-adapter';
 import { google, calendar_v3 } from 'googleapis';
 import { z } from 'zod';
+import * as moment from 'moment-timezone';
 
 // Input validation schemas
 const CreateEventSchema = z.object({
   summary: z.string().min(1, 'Event title is required'),
   description: z.string().optional(),
-  startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
-    message: 'Invalid start time format. Use ISO 8601 format',
+  startTime: z.string().refine((val) => {
+    // Strict ISO 8601 validation
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+    return iso8601Regex.test(val) && !isNaN(Date.parse(val));
+  }, {
+    message: 'Invalid start time format. Use ISO 8601 format (e.g., 2024-01-15T10:00:00Z)',
   }),
-  endTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
-    message: 'Invalid end time format. Use ISO 8601 format',
+  endTime: z.string().refine((val) => {
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+    return iso8601Regex.test(val) && !isNaN(Date.parse(val));
+  }, {
+    message: 'Invalid end time format. Use ISO 8601 format (e.g., 2024-01-15T11:00:00Z)',
   }),
   attendees: z.array(z.string().email('Invalid email format')).optional(),
   location: z.string().optional(),
-  timeZone: z.string().optional().default('UTC'),
+  timeZone: z.string().optional().default('UTC').refine((tz) => {
+    return moment.tz.zone(tz) !== null;
+  }, {
+    message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
+  }),
 });
 
 const UpdateEventSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
   summary: z.string().optional(),
   description: z.string().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z.string().optional().refine((val) => {
+    if (!val) return true; // Optional field
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+    return iso8601Regex.test(val) && !isNaN(Date.parse(val));
+  }, {
+    message: 'Invalid start time format. Use ISO 8601 format (e.g., 2024-01-15T10:00:00Z)',
+  }),
+  endTime: z.string().optional().refine((val) => {
+    if (!val) return true; // Optional field
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+    return iso8601Regex.test(val) && !isNaN(Date.parse(val));
+  }, {
+    message: 'Invalid end time format. Use ISO 8601 format (e.g., 2024-01-15T11:00:00Z)',
+  }),
   attendees: z.array(z.string().email()).optional(),
   location: z.string().optional(),
-  timeZone: z.string().optional(),
+  timeZone: z.string().optional().refine((tz) => {
+    if (!tz) return true; // Optional field
+    return moment.tz.zone(tz) !== null;
+  }, {
+    message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
+  }),
 });
 
 const DeleteEventSchema = z.object({
@@ -52,6 +81,13 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: accessToken });
     this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+  }
+
+  private getCalendar(): calendar_v3.Calendar {
+    if (!this.calendar) {
+      throw new Error('Google Calendar not authenticated');
+    }
+    return this.calendar;
   }
 
   async handleRequest(request: any): Promise<any> {
@@ -264,7 +300,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
       attendees: validated.attendees?.map(email => ({ email })),
     };
 
-    const response = await this.calendar!.events.insert({
+    const response = await this.getCalendar().events.insert({
       calendarId: 'primary',
       requestBody: event,
       sendNotifications: true,
@@ -287,68 +323,79 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
   private async updateEvent(id: any, params: any) {
     const validated = UpdateEventSchema.parse(params);
     
-    // First get the existing event
-    const existingEvent = await this.calendar!.events.get({
-      calendarId: 'primary',
-      eventId: validated.eventId,
-    });
-
-    if (!existingEvent.data) {
-      return this.createErrorResponse(id, -32000, 'Event not found');
-    }
-
-    // Build update object with only changed fields
-    const updateData: calendar_v3.Schema$Event = {
-      ...existingEvent.data,
-    };
-
-    if (validated.summary !== undefined) updateData.summary = validated.summary;
-    if (validated.description !== undefined) updateData.description = validated.description;
-    if (validated.location !== undefined) updateData.location = validated.location;
+    // Build patch object with only provided fields
+    const patchData: calendar_v3.Schema$Event = {};
     
-    if (validated.startTime !== undefined || validated.timeZone !== undefined) {
-      updateData.start = {
-        dateTime: validated.startTime || existingEvent.data.start?.dateTime,
-        timeZone: validated.timeZone || existingEvent.data.start?.timeZone || 'UTC',
-      };
-    }
-    
-    if (validated.endTime !== undefined || validated.timeZone !== undefined) {
-      updateData.end = {
-        dateTime: validated.endTime || existingEvent.data.end?.dateTime,
-        timeZone: validated.timeZone || existingEvent.data.end?.timeZone || 'UTC',
-      };
-    }
+    if (validated.summary !== undefined) patchData.summary = validated.summary;
+    if (validated.description !== undefined) patchData.description = validated.description;
+    if (validated.location !== undefined) patchData.location = validated.location;
     
     if (validated.attendees !== undefined) {
-      updateData.attendees = validated.attendees.map(email => ({ email }));
+      patchData.attendees = validated.attendees.map(email => ({ email }));
+    }
+    
+    // Only fetch existing event if we need to merge time/timezone fields
+    if (validated.startTime !== undefined || validated.endTime !== undefined || validated.timeZone !== undefined) {
+      // We need existing event data to properly handle partial time updates
+      const existingEvent = await this.getCalendar().events.get({
+        calendarId: 'primary',
+        eventId: validated.eventId,
+      });
+
+      if (!existingEvent.data) {
+        return this.createErrorResponse(id, -32000, 'Event not found');
+      }
+
+      // Handle time updates carefully to maintain consistency
+      if (validated.startTime !== undefined || validated.timeZone !== undefined) {
+        patchData.start = {
+          dateTime: validated.startTime || existingEvent.data.start?.dateTime,
+          timeZone: validated.timeZone || existingEvent.data.start?.timeZone || 'UTC',
+        };
+      }
+      
+      if (validated.endTime !== undefined || validated.timeZone !== undefined) {
+        patchData.end = {
+          dateTime: validated.endTime || existingEvent.data.end?.dateTime,
+          timeZone: validated.timeZone || existingEvent.data.end?.timeZone || 'UTC',
+        };
+      }
     }
 
-    const response = await this.calendar!.events.update({
-      calendarId: 'primary',
-      eventId: validated.eventId,
-      requestBody: updateData,
-      sendNotifications: true,
-    });
+    try {
+      // Use patch method for partial updates
+      const response = await this.getCalendar().events.patch({
+        calendarId: 'primary',
+        eventId: validated.eventId,
+        requestBody: patchData,
+        sendNotifications: true,
+      });
 
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: {
-        content: [
-          {
-            type: 'text',
-            text: this.formatEventResponse(response.data, 'Event updated successfully'),
-          },
-        ],
-      },
-    };
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: this.formatEventResponse(response.data, 'Event updated successfully'),
+            },
+          ],
+        },
+      };
+    } catch (error) {
+      // If patch fails with 404, provide better error message
+      if ((error as any)?.response?.status === 404) {
+        return this.createErrorResponse(id, -32000, 'Event not found');
+      }
+      throw error;
+    }
   }
 
   private async deleteEvent(id: any, params: any) {
     const validated = DeleteEventSchema.parse(params);
     
-    await this.calendar!.events.delete({
+    await this.getCalendar().events.delete({
       calendarId: 'primary',
       eventId: validated.eventId,
       sendNotifications: validated.sendNotifications,
@@ -371,7 +418,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
   private async getEvent(id: any, params: any) {
     const validated = GetEventSchema.parse(params);
     
-    const response = await this.calendar!.events.get({
+    const response = await this.getCalendar().events.get({
       calendarId: 'primary',
       eventId: validated.eventId,
     });
@@ -397,7 +444,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
   private async listEvents(id: any, params: any) {
     const validated = ListEventsSchema.parse(params || {});
     
-    const response = await this.calendar!.events.list({
+    const response = await this.getCalendar().events.list({
       calendarId: 'primary',
       maxResults: validated.maxResults,
       timeMin: validated.timeMin,
