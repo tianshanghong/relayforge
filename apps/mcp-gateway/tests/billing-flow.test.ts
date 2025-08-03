@@ -1,4 +1,14 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
+// Mock the OAuth service config before importing anything else
+vi.mock('@relayforge/oauth-service', () => ({
+  OAuthService: vi.fn(),
+  sessionService: {
+    createSession: vi.fn(),
+    validateSession: vi.fn(),
+  },
+}));
+
 import { BillingService } from '../src/services/billing.service';
 import { TokenValidator } from '../src/auth/token-validator';
 import { ServiceRouter } from '../src/routing/service-router';
