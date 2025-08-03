@@ -5,30 +5,22 @@ import { testHelpers } from '../helpers';
 
 describe('UsageService', () => {
   let user: any;
-  let sessionId: string;
+  let tokenId: string;
 
   beforeEach(async () => {
     // Seed service pricing first
     await testHelpers.seedServicePricing();
     
-    // Create user and session
+    // Create user and token
     user = await testHelpers.createUser();
-    sessionId = await testHelpers.createSession(user.id);
-    
-    // Verify session was created
-    const session = await prisma.session.findUnique({
-      where: { sessionId },
-    });
-    if (!session) {
-      throw new Error(`Session not found with ID: ${sessionId}`);
-    }
+    tokenId = await testHelpers.createMcpToken(user.id);
   });
 
   describe('trackUsage', () => {
     it('should track service usage', async () => {
       const usage = await usageService.trackUsage({
         userId: user.id,
-        sessionId,
+        tokenId,
         service: 'google-calendar',
         method: 'createEvent',
         success: true,
@@ -44,7 +36,7 @@ describe('UsageService', () => {
     it('should track failed usage', async () => {
       const usage = await usageService.trackUsage({
         userId: user.id,
-        sessionId,
+        tokenId,
         service: 'openai',
         success: false,
       });
@@ -57,7 +49,7 @@ describe('UsageService', () => {
       await expect(
         usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          tokenId,
           service: 'nonexistent',
         })
       ).rejects.toThrow('Service nonexistent is not available');
@@ -70,7 +62,7 @@ describe('UsageService', () => {
       for (let i = 0; i < 5; i++) {
         await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          tokenId,
           service: i % 2 === 0 ? 'google-calendar' : 'openai',
         });
       }
@@ -88,7 +80,7 @@ describe('UsageService', () => {
       await prisma.usage.create({
         data: {
           userId: user.id,
-          sessionId,
+          tokenId,
           service: 'openai',
           credits: 1,
           timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
@@ -98,7 +90,7 @@ describe('UsageService', () => {
       // Create recent usage
       await usageService.trackUsage({
         userId: user.id,
-        sessionId,
+        tokenId,
         service: 'google-calendar',
       });
 
@@ -111,7 +103,7 @@ describe('UsageService', () => {
       for (let i = 0; i < 10; i++) {
         await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          tokenId,
           service: 'openai',
         });
       }
@@ -124,11 +116,11 @@ describe('UsageService', () => {
   describe('getUsageSummary', () => {
     it('should summarize usage by service', async () => {
       // Track various usage
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'google-calendar' });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'google-calendar' });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'openai' });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'openai', success: false });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'github' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'google-calendar' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'google-calendar' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'openai' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'openai', success: false });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'github' });
 
       const summary = await usageService.getUsageSummary(user.id);
 
@@ -156,9 +148,9 @@ describe('UsageService', () => {
       const month = now.getMonth() + 1;
 
       // Track usage
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'google-calendar' });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'openai' });
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'github' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'google-calendar' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'openai' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'github' });
 
       const summary = await usageService.getBillingPeriodSummary(user.id, year, month);
 
@@ -205,12 +197,12 @@ describe('UsageService', () => {
     it('should get top services by usage', async () => {
       // Create usage pattern
       for (let i = 0; i < 5; i++) {
-        await usageService.trackUsage({ userId: user.id, sessionId, service: 'google-calendar' });
+        await usageService.trackUsage({ userId: user.id, tokenId, service: 'google-calendar' });
       }
       for (let i = 0; i < 3; i++) {
-        await usageService.trackUsage({ userId: user.id, sessionId, service: 'openai' });
+        await usageService.trackUsage({ userId: user.id, tokenId, service: 'openai' });
       }
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'github' });
+      await usageService.trackUsage({ userId: user.id, tokenId, service: 'github' });
 
       const topServices = await usageService.getTopServices(user.id, 3);
 
@@ -223,12 +215,22 @@ describe('UsageService', () => {
     });
 
     it('should filter by recent days', async () => {
+      // Create a token for testing
+      const token = await prisma.mcpToken.create({
+        data: {
+          userId: user.id,
+          name: 'Test Token',
+          tokenHash: 'test-hash-' + Math.random(),
+          prefix: 'mcp_test',
+        },
+      });
+
       // Create old usage
       const oldUsage = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
       await prisma.usage.create({
         data: {
           userId: user.id,
-          sessionId,
+          tokenId: token.id,
           service: 'github',
           credits: 1,
           timestamp: oldUsage,
@@ -236,7 +238,7 @@ describe('UsageService', () => {
       });
 
       // Create recent usage
-      await usageService.trackUsage({ userId: user.id, sessionId, service: 'openai' });
+      await usageService.trackUsage({ userId: user.id, tokenId: token.id, service: 'openai' });
 
       const topServices = await usageService.getTopServices(user.id, 5, 30);
       
@@ -250,7 +252,7 @@ describe('UsageService', () => {
       // Track daily usage
       const dailyCredits = 10;
       for (let i = 0; i < 5; i++) {
-        await usageService.trackUsage({ userId: user.id, sessionId, service: 'google-calendar' });
+        await usageService.trackUsage({ userId: user.id, tokenId, service: 'google-calendar' });
       }
 
       const estimate = await usageService.estimateMonthlySpend(user.id, 1);

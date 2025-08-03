@@ -3,6 +3,8 @@
 ## What it is
 Hosted MCP server platform that provides access to multiple services through a single URL. Users bring their own API keys for non-OAuth services.
 
+**🔒 Security Update**: We're implementing secure, stable MCP URLs with proper bearer token authentication instead of session IDs in URLs.
+
 ## Tech Stack
 - **Monorepo**: Turbo + pnpm
 - **Frontend**: React (port 5173)  
@@ -30,8 +32,9 @@ pnpm lint       # Run linting
 ### How It Works
 
 ```
-User configures ONE server:
-relayforge.com/mcp/{session-id}
+User configures ONE stable URL:
+relayforge.com/mcp/u/happy-dolphin-42
++ Bearer token authentication
             ↓
     Provides access to:
     - Google Calendar ✓
@@ -162,15 +165,19 @@ const servicePricing = {
 
 ## Client Configuration
 
-### Single Server Setup
+### Secure Authentication Setup (New)
 ```json
 // User's Claude/Cursor config
 {
   "mcpServers": {
     "relayforge": {
-      "url": "https://relayforge.com/mcp/abc123xyz",
+      "type": "http",
+      "url": "https://relayforge.com/mcp/u/happy-dolphin-42",  // Memorable URL
+      "headers": {
+        "Authorization": "Bearer mcp_live_xxxxxxxxxxxxx"      // Secure token
+      },
       "env": {
-        // API keys never touch our servers
+        // API keys for client-side services
         "OPENAI_API_KEY": "sk-...",
         "ANTHROPIC_API_KEY": "...",
         "STRIPE_API_KEY": "..."
@@ -179,6 +186,12 @@ const servicePricing = {
   }
 }
 ```
+
+### Key Features:
+- **Stable URL**: Never changes, even after re-login
+- **Secure Authentication**: Bearer token in headers, not in URL
+- **Multiple Tokens**: Support different tokens for different AI clients
+- **Revocable**: Tokens can be revoked without changing URL
 
 ### MCP Protocol Response
 ```typescript
@@ -210,6 +223,7 @@ const servicePricing = {
 interface User {
   userId: string;           // UUID
   primaryEmail: string;     // Changeable
+  slug: string;             // Memorable identifier (e.g., "happy-dolphin-42")
   credits: number;          // $1 = 100 credits
   createdAt: Date;
   
@@ -229,7 +243,16 @@ interface User {
     connectedAt: Date;
   }>;
   
-  // No API key configuration tracking needed
+  // MCP authentication tokens
+  mcpTokens: Array<{
+    id: string;
+    name: string;           // "Claude Desktop", "Cursor", etc.
+    tokenHash: string;      // SHA-256 hash of token
+    prefix: string;         // First 8 chars for identification
+    lastUsedAt: Date;
+    createdAt: Date;
+    revokedAt?: Date;
+  }>;
 }
 
 interface Usage {
@@ -270,15 +293,30 @@ async function userAuthenticationFlow() {
     // No new credits given
   }
   
-  // 3. Session creation (AFTER user exists)
+  // 3. Generate user slug if new user
+  if (!user.slug) {
+    user.slug = await generateUniqueSlug(); // e.g., "happy-dolphin-42"
+  }
+  
+  // 4. Create MCP token if first time or requested
+  let mcpToken;
+  if (!existingMapping || requestNewToken) {
+    const { token, hash } = await generateMcpToken();
+    await saveMcpToken(user.id, hash, tokenName);
+    mcpToken = token; // Only returned once!
+  }
+  
+  // 5. Create web session for UI
   const session = await createSession({
     userId: user.id,
     expiresIn: 30 // days
   });
   
-  // 4. Return MCP URL to user
+  // 6. Return secure MCP configuration
   return {
-    sessionUrl: `https://relayforge.com/mcp/${session.id}`,
+    mcpUrl: `https://relayforge.com/mcp/u/${user.slug}`,
+    mcpToken: mcpToken, // Only shown on creation!
+    webSessionId: session.id, // For web UI only
     message: existingMapping ? "Welcome back!" : "Account created!"
   };
 }
@@ -314,17 +352,39 @@ async function addOAuthProvider(currentUserId: string, newProvider: string) {
 
 ```typescript
 class MCPGateway {
-  async handleRequest(sessionId: string, request: MCPRequest) {
-    const user = await getUserBySession(sessionId);
+  async handleRequest(userSlug: string, request: MCPRequest) {
+    // 1. Authenticate via Bearer token
+    const authHeader = request.headers['Authorization'];
+    if (!authHeader?.startsWith('Bearer mcp_live_')) {
+      return { error: "Invalid authentication" };
+    }
+    
+    const token = authHeader.substring(7); // Remove "Bearer "
+    const tokenHash = sha256(token);
+    
+    // 2. Validate token and get user
+    const mcpToken = await getMcpTokenByHash(tokenHash);
+    if (!mcpToken || mcpToken.revokedAt) {
+      return { error: "Invalid or revoked token" };
+    }
+    
+    const user = await getUserById(mcpToken.userId);
+    if (!user || user.slug !== userSlug) {
+      return { error: "Invalid user" };
+    }
+    
+    // 3. Update token usage
+    await updateTokenLastUsed(mcpToken.id);
+    
     const [service, method] = request.method.split('.');
     
-    // Check balance
+    // 4. Check balance
     const cost = servicePricing[service];
     if (user.credits < cost) {
       return { error: "Insufficient credits" };
     }
     
-    // Handle auth
+    // 5. Handle service authentication
     if (isOAuthService(service)) {
       const token = await oauthService.getToken(user.id, service);
       request.headers['Authorization'] = `Bearer ${token}`;
@@ -337,17 +397,17 @@ class MCPGateway {
       }
     }
     
-    // Route to appropriate MCP server
+    // 6. Route to appropriate MCP server
     try {
       const response = await routeToMCPServer(service, request);
       
       // Track usage for billing
-      await trackUsage(user.id, service, cost, true);
+      await trackUsage(user.id, service, cost, true, mcpToken.id);
       
       return response;
     } catch (error) {
       // Still track failed attempts for billing transparency
-      await trackUsage(user.id, service, cost, false);
+      await trackUsage(user.id, service, cost, false, mcpToken.id);
       throw error;
     }
   }

@@ -3,17 +3,21 @@ import { crypto } from '../src/crypto';
 import type { User, ServicePricing } from '@prisma/client';
 
 let userCounter = 0;
+let timestamp = Date.now();
 
 export const resetTestHelpers = () => {
   userCounter = 0;
+  timestamp = Date.now();
 };
 
 export const testHelpers = {
   async createUser(email?: string, credits = 500): Promise<User> {
     const uniqueEmail = email || `test${++userCounter}@example.com`;
+    const randomId = Math.random().toString(36).substring(7);
     return prisma.user.create({
       data: {
         primaryEmail: uniqueEmail,
+        slug: `test-user-${userCounter}-${randomId}`,
         credits,
         linkedEmails: {
           create: {
@@ -47,6 +51,18 @@ export const testHelpers = {
       },
     });
     return sessionId;
+  },
+
+  async createMcpToken(userId: string, name = 'Test Token') {
+    const token = await prisma.mcpToken.create({
+      data: {
+        userId,
+        name,
+        tokenHash: `test-hash-${Date.now()}-${Math.random()}`,
+        prefix: 'mcp_test',
+      },
+    });
+    return token.id;
   },
 
   async createOAuthConnection(userId: string, provider = 'google', email?: string) {
@@ -92,6 +108,7 @@ export const testHelpers = {
     await prisma.usage.deleteMany();
     await prisma.session.deleteMany();
     await prisma.oAuthConnection.deleteMany();
+    await prisma.mcpToken.deleteMany();
     await prisma.linkedEmail.deleteMany();
     await prisma.user.deleteMany();
     await prisma.servicePricing.deleteMany();

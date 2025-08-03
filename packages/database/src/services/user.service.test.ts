@@ -11,6 +11,7 @@ describe('UserService Credit Management', () => {
     const user = await prisma.user.create({
       data: {
         primaryEmail: 'credit-test@example.com',
+        slug: 'test-user-1',
         credits: 100,
       },
     });

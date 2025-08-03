@@ -28,6 +28,7 @@ describe('Session Management Integration', () => {
     const user = await prisma.user.create({
       data: {
         primaryEmail: 'session-integration@example.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         credits: 500,
       },
     });
@@ -245,9 +246,10 @@ describe('Session Management Integration', () => {
     it.skip('should prevent users from revoking other users sessions (disabled until JWT auth)', async () => {
       // Create another user
       const otherUser = await prisma.user.create({
-        data: {
-          primaryEmail: 'other-user@example.com',
-          credits: 500,
+      data: {
+        primaryEmail: 'other-user@example.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 500,
         },
       });
 

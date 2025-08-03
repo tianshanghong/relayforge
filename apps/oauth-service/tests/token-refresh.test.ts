@@ -116,6 +116,7 @@ describe('OAuth Token Refresh', () => {
     const user = await prisma.user.create({
       data: {
         primaryEmail: 'test@example.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         credits: 500,
         linkedEmails: {
           create: {

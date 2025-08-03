@@ -172,6 +172,7 @@ describe('Core OAuth Integration Tests', () => {
         ]),
         connectedServices: ['google'],
       });
+      expect(accountData.slug).toMatch(/^[a-z]+-[a-z]+-\d+$/); // Check slug format separately
 
       console.log('✅ Complete OAuth flow integration test passed!');
     });

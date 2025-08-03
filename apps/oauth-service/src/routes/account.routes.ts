@@ -51,6 +51,7 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
           type: 'object',
           properties: {
             primaryEmail: { type: 'string' },
+            slug: { type: 'string' },
             credits: { type: 'number' },
             linkedAccounts: {
               type: 'array',
@@ -110,6 +111,7 @@ export const accountRoutes: FastifyPluginAsync = async (fastify) => {
 
       return {
         primaryEmail: user.primaryEmail,
+        slug: user.slug,
         credits: user.credits,
         linkedAccounts,
         connectedServices,

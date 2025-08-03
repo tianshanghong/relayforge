@@ -67,29 +67,48 @@ describe('SQL Injection Prevention', () => {
       expect(realUser?.id).toBe(user.id);
     });
 
-    it('should safely handle malicious metadata', async () => {
+    // Note: The malicious metadata test was removed as it was testing session metadata
+    // which is not applicable to MCP tokens. MCP tokens don't store metadata.
+
+    it('should safely handle malicious MCP token names', async () => {
       const user = await userService.createUser({
-        email: 'metadata-test@example.com',
+        email: 'token-test@example.com',
         provider: 'google',
       });
 
-      const maliciousMetadata = {
-        userAgent: "'; DROP TABLE sessions; --",
-        ipAddress: "127.0.0.1' OR '1'='1",
-        custom: "admin' UNION SELECT * FROM users --",
-      };
+      const maliciousNames = [
+        "Claude Desktop'; DROP TABLE mcp_tokens; --",
+        "Test' OR '1'='1",
+        "Token' UNION SELECT * FROM users --",
+        "'; DELETE FROM mcp_tokens WHERE '1'='1",
+        "Test\"); DROP TABLE users; --",
+      ];
 
-      // Should create session without SQL injection
-      const sessionId = await userService.createSession({
-        userId: user.id,
-        metadata: maliciousMetadata,
+      // Import mcpTokenService
+      const { mcpTokenService } = await import('../../src/services');
+
+      for (const name of maliciousNames) {
+        // Should create token without SQL injection
+        const token = await mcpTokenService.createToken({
+          userId: user.id,
+          name,
+        });
+
+        expect(token.name).toBe(name);
+        expect(token.userId).toBe(user.id);
+
+        // Verify token was created normally
+        const found = await prisma.mcpToken.findUnique({
+          where: { id: token.id },
+        });
+        expect(found?.name).toBe(name);
+      }
+
+      // Verify mcp_tokens table still exists and has correct count
+      const tokenCount = await prisma.mcpToken.count({
+        where: { userId: user.id },
       });
-
-      const session = await prisma.session.findUnique({
-        where: { sessionId },
-      });
-
-      expect(session?.metadata).toEqual(maliciousMetadata);
+      expect(tokenCount).toBe(maliciousNames.length);
     });
   });
 
@@ -158,9 +177,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const sessionId = await userService.createSession({
-        userId: user.id,
-      });
+      const tokenId = await testHelpers.createMcpToken(user.id);
 
       const maliciousServices = [
         "google-calendar'; DROP TABLE usage; --",
@@ -181,7 +198,7 @@ describe('SQL Injection Prevention', () => {
         // Should track safely
         const usage = await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          tokenId,
           service,
           success: true,
         });
@@ -200,9 +217,7 @@ describe('SQL Injection Prevention', () => {
         provider: 'google',
       });
 
-      const sessionId = await userService.createSession({
-        userId: user.id,
-      });
+      const tokenId = await testHelpers.createMcpToken(user.id);
 
       const maliciousMethods = [
         "createEvent'; DELETE FROM usage; --",
@@ -213,7 +228,7 @@ describe('SQL Injection Prevention', () => {
       for (const method of maliciousMethods) {
         const usage = await usageService.trackUsage({
           userId: user.id,
-          sessionId,
+          tokenId,
           service: 'google-calendar',
           method,
           success: true,

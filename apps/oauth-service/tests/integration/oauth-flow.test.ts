@@ -166,7 +166,8 @@ describe('OAuth Flow Integration Tests', () => {
 
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toContain('http://localhost:3000/auth/success');
-      expect(response.headers.location).toContain('session_url=');
+      expect(response.headers.location).toContain('mcp_url=');
+      expect(response.headers.location).toContain('mcp_token=');
       expect(response.headers.location).toContain('email=test%40gmail.com');
       
       // Check cookie was set
@@ -203,9 +204,10 @@ describe('OAuth Flow Integration Tests', () => {
     it('should handle successful OAuth callback for existing user', async () => {
       // Create existing user
       const existingUser = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com'.toLowerCase(),
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com'.toLowerCase(),
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
           linkedEmails: {
             create: {
               email: 'test@gmail.com'.toLowerCase(),
@@ -355,9 +357,10 @@ describe('OAuth Flow Integration Tests', () => {
     beforeEach(async () => {
       // Create a user with an expired OAuth connection
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
           linkedEmails: {
             create: {
               email: 'test@gmail.com',
@@ -451,9 +454,10 @@ describe('OAuth Flow Integration Tests', () => {
   describe('Session Management', () => {
     it('should create session with proper expiry', async () => {
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -471,9 +475,10 @@ describe('OAuth Flow Integration Tests', () => {
 
     it('should validate active session', async () => {
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -485,9 +490,10 @@ describe('OAuth Flow Integration Tests', () => {
 
     it('should reject expired session', async () => {
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -507,9 +513,10 @@ describe('OAuth Flow Integration Tests', () => {
 
     it('should update lastAccessedAt on validation', async () => {
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'test@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'test@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
         },
       });
 
@@ -541,9 +548,10 @@ describe('OAuth Flow Integration Tests', () => {
     it('should link new email to existing account', async () => {
       // Create user with Google account
       const user = await prisma.user.create({
-        data: {
-          primaryEmail: 'user@gmail.com',
-          credits: 100,
+      data: {
+        primaryEmail: 'user@gmail.com',
+        slug: `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        credits: 100,
           linkedEmails: {
             create: {
               email: 'user@gmail.com',
