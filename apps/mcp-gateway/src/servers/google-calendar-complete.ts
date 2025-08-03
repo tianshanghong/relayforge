@@ -28,6 +28,7 @@ const CreateEventSchema = z.object({
   }, {
     message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
   }),
+  sendNotifications: z.boolean().optional().default(true),
 });
 
 const UpdateEventSchema = z.object({
@@ -57,6 +58,7 @@ const UpdateEventSchema = z.object({
   }, {
     message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
   }),
+  sendNotifications: z.boolean().optional().default(true),
 });
 
 const DeleteEventSchema = z.object({
@@ -204,6 +206,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                   type: 'string', 
                   description: 'Time zone (default: UTC)' 
                 },
+                sendNotifications: { 
+                  type: 'boolean', 
+                  description: 'Whether to send email notifications to attendees (default: true)' 
+                },
               },
               required: ['summary', 'startTime', 'endTime'],
             },
@@ -250,6 +256,10 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
                 timeZone: { 
                   type: 'string', 
                   description: 'Time zone (IANA format). When changed alone, preserves the absolute event time.' 
+                },
+                sendNotifications: { 
+                  type: 'boolean', 
+                  description: 'Whether to send email notifications about the update (default: true)' 
                 },
               },
               required: ['eventId'],
@@ -372,7 +382,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
     const response = await this.getCalendar().events.insert({
       calendarId: validated.calendarId,
       requestBody: event,
-      sendNotifications: true,
+      sendNotifications: validated.sendNotifications,
     });
 
     return {
@@ -472,7 +482,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
         calendarId: validated.calendarId,
         eventId: validated.eventId,
         requestBody: patchData,
-        sendNotifications: true,
+        sendNotifications: validated.sendNotifications,
       });
 
       return {
