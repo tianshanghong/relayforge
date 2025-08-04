@@ -219,7 +219,7 @@ describe('UsageService', () => {
       const token = await prisma.mcpToken.create({
         data: {
           userId: user.id,
-          name: 'Test Token',
+          name: 'Test Token Recent Days',
           tokenHash: 'test-hash-' + Math.random(),
           prefix: 'mcp_test',
         },
