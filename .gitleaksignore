@@ -1,0 +1,17 @@
+# Gitleaks ignore file
+# Add specific findings here that are false positives
+
+# Example files in tests that contain fake secrets
+apps/oauth-service/tests/
+packages/database/tests/
+*.test.ts
+*.test.js
+
+# Documentation with example secrets
+docs/
+*.md
+
+# Example environment files
+*.example
+.env.example
+.env.*.example

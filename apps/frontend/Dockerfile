@@ -9,6 +9,7 @@ WORKDIR /app
 # Copy workspace files
 COPY pnpm-*.yaml ./
 COPY package.json ./
+COPY tsconfig.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 
 # Install dependencies
