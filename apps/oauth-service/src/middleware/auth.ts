@@ -9,7 +9,6 @@ import { timingSafeEqual } from 'crypto';
 declare module 'fastify' {
   interface FastifyRequest {
     userId?: string;
-    cookies?: { [key: string]: string };
   }
 }
 

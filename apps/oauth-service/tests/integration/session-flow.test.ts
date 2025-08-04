@@ -230,17 +230,17 @@ describe('Session Management Integration', () => {
   });
 
   describe('Session Security', () => {
-    it('should return 503 for all authenticated endpoints', async () => {
+    it('should return 401 for authenticated endpoints without session', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/sessions',
         payload: {},
       });
 
-      expect(response.statusCode).toBe(503);
+      expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Service Unavailable');
-      expect(body.message).toContain('JWT authentication is coming soon');
+      expect(body.error).toBe('Unauthorized');
+      expect(body.message).toContain('Session required');
     });
 
     it.skip('should prevent users from revoking other users sessions (disabled until JWT auth)', async () => {
