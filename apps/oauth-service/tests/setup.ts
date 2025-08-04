@@ -24,7 +24,7 @@ import { prisma } from '@relayforge/database';
 const databasePath = path.join(__dirname, '../../../packages/database');
 try {
   console.log('Applying database schema...');
-  execSync('npx prisma db push --skip-generate', {
+  execSync('npx prisma db push --skip-generate --accept-data-loss', {
     cwd: databasePath,
     stdio: 'inherit',
     env: process.env,

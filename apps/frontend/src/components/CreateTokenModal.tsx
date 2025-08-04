@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { tokenApi } from '../services/api';
+import { McpToken } from '../types/token.types';
+import { UI_FEEDBACK_TIMEOUT, TOKEN_NAME_MAX_LENGTH } from '../constants/ui.constants';
 
 interface CreateTokenModalProps {
   onClose: () => void;
-  onTokenCreated: (token: any) => void;
+  onTokenCreated: (token: McpToken) => void;
 }
 
 export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalProps) {
@@ -31,7 +33,7 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
       setCreating(true);
       setError(null);
       const response = await tokenApi.createToken(name.trim());
-      setNewToken(response.token.plainToken);
+      setNewToken(response.token.plainToken || null);
       onTokenCreated({
         id: response.token.id,
         name: response.token.name,
@@ -40,7 +42,13 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
         lastUsedAt: null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create token');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create token';
+      // Check if it's a duplicate name error
+      if (errorMessage.includes('already exists')) {
+        setError('A token with this name already exists. Please choose a different name.');
+      } else {
+        setError(errorMessage);
+      }
       setIsSubmitted(false); // Allow retry on error
     } finally {
       setCreating(false);
@@ -53,7 +61,6 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
     try {
       await navigator.clipboard.writeText(newToken);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -63,9 +70,16 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // Reset copied state after feedback timeout
+  useEffect(() => {
+    if (copied) {
+      const timeout = setTimeout(() => setCopied(false), UI_FEEDBACK_TIMEOUT);
+      return () => clearTimeout(timeout);
+    }
+  }, [copied]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -94,7 +108,7 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
                   placeholder="e.g., Claude Desktop"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   autoFocus
-                  maxLength={100}
+                  maxLength={TOKEN_NAME_MAX_LENGTH}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Give your token a descriptive name to remember where it's used

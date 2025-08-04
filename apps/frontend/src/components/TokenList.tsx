@@ -1,15 +1,8 @@
 import { useState } from 'react';
-
-interface Token {
-  id: string;
-  name: string;
-  prefix: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-}
+import { McpToken } from '../types/token.types';
 
 interface TokenListProps {
-  tokens: Token[];
+  tokens: McpToken[];
   onRevoke: (tokenId: string) => Promise<void>;
 }
 

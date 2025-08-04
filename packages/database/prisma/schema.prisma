@@ -140,8 +140,11 @@ model McpToken {
   user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   usage Usage[]
 
+  // Unique constraint: each user can only have one active token with the same name
+  @@unique([userId, name], map: "unique_active_token_name")
   @@index([tokenHash])
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, createdAt]) // Composite index for duplicate check query
   @@map("mcp_tokens")
 }

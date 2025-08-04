@@ -71,29 +71,6 @@ export async function tokensRoutes(fastify: FastifyInstance) {
       const { name } = request.body;
       const trimmedName = name.trim();
 
-      // Check if a token with this name was created recently (within 5 seconds)
-      const recentTokens = await mcpTokenService.getUserTokens(userId);
-      const fiveSecondsAgo = new Date(Date.now() - 5000);
-      const duplicateToken = recentTokens.find(
-        token => token.name === trimmedName && 
-        token.createdAt > fiveSecondsAgo &&
-        !token.revokedAt
-      );
-
-      if (duplicateToken) {
-        // Return the existing token instead of creating a duplicate
-        return reply.send({
-          success: true,
-          token: {
-            id: duplicateToken.id,
-            name: duplicateToken.name,
-            prefix: duplicateToken.prefix,
-            createdAt: duplicateToken.createdAt,
-            plainToken: 'Token already created. For security, the token value cannot be shown again.',
-          },
-        });
-      }
-
       const newToken = await mcpTokenService.createToken({
         userId,
         name: trimmedName,
@@ -110,8 +87,17 @@ export async function tokensRoutes(fastify: FastifyInstance) {
           plainToken: newToken.plainToken, // Critical: only returned on creation
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       fastify.log.error({ error }, 'Failed to create token');
+      
+      // Check if it's a unique constraint violation
+      if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+        return reply.status(409).send({
+          success: false,
+          error: 'A token with this name already exists',
+        });
+      }
+      
       return reply.status(500).send({
         success: false,
         error: 'Failed to create token',

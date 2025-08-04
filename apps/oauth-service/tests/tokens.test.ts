@@ -129,9 +129,6 @@ describe('Token Routes', () => {
 
   describe('POST /api/tokens', () => {
     it('should create a new token with valid name', async () => {
-      // Mock getUserTokens to return empty array (no duplicates)
-      mockGetUserTokens.mockResolvedValue([]);
-      
       const mockNewToken = {
         id: 'new-token-id',
         userId: 'test-user-id',
@@ -209,9 +206,6 @@ describe('Token Routes', () => {
     });
 
     it('should trim whitespace from token name', async () => {
-      // Mock getUserTokens to return empty array (no duplicates)
-      mockGetUserTokens.mockResolvedValue([]);
-      
       mockCreateToken.mockResolvedValue({
         id: 'token-id',
         name: 'Trimmed Name',
@@ -239,16 +233,13 @@ describe('Token Routes', () => {
       });
     });
 
-    it('should prevent duplicate token creation within 5 seconds', async () => {
-      const recentToken = {
-        id: 'existing-token-id',
-        name: 'Duplicate Token',
-        prefix: 'mcp_live_dupl1234',
-        createdAt: new Date(Date.now() - 3000), // 3 seconds ago
-        revokedAt: null,
-      };
-
-      mockGetUserTokens.mockResolvedValue([recentToken]);
+    it('should return 409 for duplicate token names', async () => {
+      // Mock Prisma unique constraint error
+      const prismaError = new Error('Unique constraint failed');
+      (prismaError as any).code = 'P2002';
+      (prismaError as any).meta = { target: ['userId', 'name'] };
+      
+      mockCreateToken.mockRejectedValue(prismaError);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -262,12 +253,10 @@ describe('Token Routes', () => {
         }),
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(409);
       const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.token.id).toBe('existing-token-id');
-      expect(body.token.plainToken).toBe('Token already created. For security, the token value cannot be shown again.');
-      expect(mockCreateToken).not.toHaveBeenCalled();
+      expect(body.success).toBe(false);
+      expect(body.error).toBe('A token with this name already exists');
     });
   });
 
