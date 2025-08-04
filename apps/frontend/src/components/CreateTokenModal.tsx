@@ -46,10 +46,17 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
       // Check if it's a duplicate name error
       if (errorMessage.includes('already exists')) {
         setError('A token with this name already exists. Please choose a different name.');
-      } else {
+        // Only allow retry for known validation errors
+        setIsSubmitted(false);
+      } else if (errorMessage.startsWith('400') || errorMessage.startsWith('401') || errorMessage.startsWith('403') || errorMessage.includes('Invalid')) {
         setError(errorMessage);
+        // Allow retry for client errors (4xx)
+        setIsSubmitted(false);
+      } else {
+        // For network errors or 5xx errors, keep isSubmitted=true to prevent duplicates
+        setError(`${errorMessage}. If the token was created, it will appear in your list after refreshing.`);
+        // Don't reset isSubmitted to prevent potential duplicate creation
       }
-      setIsSubmitted(false); // Allow retry on error
     } finally {
       setCreating(false);
     }

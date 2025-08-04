@@ -13,7 +13,12 @@ const OAUTH_SERVICE_URL = import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://loca
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Network error' })) as ApiError;
-    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+    // Include status code in error message for better error handling
+    const errorMessage = error.error || `HTTP ${response.status}: ${response.statusText}`;
+    const errorWithStatus = response.status >= 400 && response.status < 500 
+      ? `${response.status}: ${errorMessage}`
+      : errorMessage;
+    throw new Error(errorWithStatus);
   }
   return response.json();
 }
