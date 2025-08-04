@@ -456,10 +456,10 @@ class MCPGateway {
 - Usage tracking and billing (with method-level tracking)
 - Real-time credit display in error messages
 - Comprehensive test coverage for billing flows
+- Environment variable documentation and setup (PR #46)
 
 ### 🚧 In Progress (Phase 2)
-- Environment variable documentation and setup
-- Token management UI
+- Token management UI (Issue #47)
 - Additional OAuth providers (GitHub, Slack)
 
 ### 📋 Planned (Phase 3)

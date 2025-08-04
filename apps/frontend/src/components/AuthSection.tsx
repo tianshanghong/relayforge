@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authApi } from '../services/api';
 
 interface OAuthProvider {
   name: string;
@@ -15,6 +17,7 @@ interface UserSession {
 }
 
 export function AuthSection() {
+  const navigate = useNavigate();
   const [providers, setProviders] = useState<OAuthProvider[]>([]);
   const [session, setSession] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,9 +54,7 @@ export function AuthSection() {
     }
 
     // Fetch OAuth providers
-    const oauthServiceUrl = import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:3002';
-    fetch(`${oauthServiceUrl}/oauth/providers`)
-      .then(res => res.json())
+    authApi.getProviders()
       .then(data => {
         setProviders(data.providers || []);
         setLoading(false);
@@ -117,12 +118,20 @@ export function AuthSection() {
               </p>
             </div>
           )}
-          <button
-            onClick={handleLogout}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Logout
-          </button>
+          <div className="mt-4 flex space-x-3">
+            <button
+              onClick={() => navigate('/tokens')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Manage Tokens
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     );

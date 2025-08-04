@@ -9,6 +9,7 @@ import { timingSafeEqual } from 'crypto';
 declare module 'fastify' {
   interface FastifyRequest {
     userId?: string;
+    cookies?: { [key: string]: string };
   }
 }
 
@@ -17,18 +18,46 @@ export interface AuthenticatedRequest extends FastifyRequest {
 }
 
 /**
- * Placeholder for user authentication
- * Returns 503 until JWT authentication is implemented
+ * Authenticate user via session cookie
  */
 export async function authenticateUser(
-  _request: AuthenticatedRequest,
+  request: AuthenticatedRequest,
   reply: FastifyReply
 ): Promise<void> {
-  reply.code(503).send({
-    error: 'Service Unavailable',
-    message: 'Session management API is not yet available. JWT authentication is coming soon.',
-    docs: 'https://docs.relayforge.xyz/api/authentication'
-  });
+  const sessionId = request.cookies?.rf_session;
+  
+  if (!sessionId) {
+    reply.code(401).send({
+      error: 'Unauthorized',
+      message: 'Session required. Please log in.'
+    });
+    return;
+  }
+
+  try {
+    // Import here to avoid circular dependency
+    const { SessionService } = await import('../services');
+    const sessionService = new SessionService();
+    
+    const sessionInfo = await sessionService.validateSession(sessionId);
+    
+    if (!sessionInfo) {
+      reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid or expired session. Please log in again.'
+      });
+      return;
+    }
+    
+    // Add userId to request for use in route handlers
+    request.userId = sessionInfo.userId;
+  } catch (error) {
+    request.log.error({ error }, 'Session validation error');
+    reply.code(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to validate session'
+    });
+  }
 }
 
 /**

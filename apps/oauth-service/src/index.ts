@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import { authRoutes } from './routes/auth.routes';
 import { accountRoutes } from './routes/account.routes';
 import { sessionRoutes } from './routes/session.routes';
+import { tokensRoutes } from './routes/tokens.routes';
 import { config } from './config';
 import { errorHandler } from './middleware/error-handler';
 import { sessionCleanupJob } from './jobs/session-cleanup';
@@ -63,6 +64,7 @@ async function start() {
   await fastify.register(authRoutes, { prefix: '/oauth' });
   await fastify.register(accountRoutes, { prefix: '/api/account' });
   await fastify.register(sessionRoutes);
+  await fastify.register(tokensRoutes);
 
   // Health check
   fastify.get('/health', async () => {
