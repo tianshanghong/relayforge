@@ -10,17 +10,22 @@ WORKDIR /app
 COPY pnpm-*.yaml ./
 COPY package.json ./
 COPY tsconfig.json ./
+COPY packages/shared/package.json ./packages/shared/
 COPY apps/frontend/package.json ./apps/frontend/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
+COPY packages/shared ./packages/shared
 COPY apps/frontend ./apps/frontend
+
+# Build shared package first
+RUN pnpm --filter @relayforge/shared build
 
 # Build frontend
 ENV NODE_ENV=production
-RUN pnpm --filter frontend build
+RUN pnpm --filter relayforge-frontend build
 
 # Production stage - nginx
 FROM nginx:alpine
