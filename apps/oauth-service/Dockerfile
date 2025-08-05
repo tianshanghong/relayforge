@@ -21,7 +21,7 @@ COPY apps/oauth-service ./apps/oauth-service
 
 # Build packages
 RUN pnpm --filter @relayforge/database build
-RUN pnpm --filter oauth-service build
+RUN pnpm --filter @relayforge/oauth-service build
 
 # Production stage
 FROM node:20-alpine
