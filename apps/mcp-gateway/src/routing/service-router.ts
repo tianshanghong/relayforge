@@ -1,5 +1,5 @@
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
-import { oauthFlowService } from '@relayforge/oauth-service/services';
+import { oauthFlowService } from '@relayforge/oauth-service/dist/services';
 import { 
   ServiceNotFoundError, 
   OAuthTokenError, 

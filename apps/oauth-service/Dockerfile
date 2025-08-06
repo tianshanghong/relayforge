@@ -9,18 +9,23 @@ WORKDIR /app
 # Copy workspace files
 COPY pnpm-*.yaml ./
 COPY package.json ./
+COPY tsconfig.json ./
 COPY packages/database/package.json ./packages/database/
+COPY packages/shared/package.json ./packages/shared/
 COPY apps/oauth-service/package.json ./apps/oauth-service/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy source code and configs
 COPY packages/database ./packages/database
+COPY packages/shared ./packages/shared
 COPY apps/oauth-service ./apps/oauth-service
+COPY turbo.json ./
 
 # Build packages
 RUN pnpm --filter @relayforge/database build
+RUN pnpm --filter @relayforge/shared build
 RUN pnpm --filter @relayforge/oauth-service build
 
 # Production stage
@@ -32,6 +37,7 @@ WORKDIR /app
 
 # Copy built application
 COPY --from=builder /app/packages/database ./packages/database
+COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
 COPY --from=builder /app/apps/oauth-service/package.json ./apps/oauth-service/
 COPY --from=builder /app/node_modules ./node_modules
