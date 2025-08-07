@@ -6,26 +6,26 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy workspace files
+# Layer 1: Package files (changes least frequently)
 COPY pnpm-*.yaml ./
 COPY package.json ./
 COPY tsconfig.json ./
+COPY turbo.json ./
+
+# Layer 2: All package.json files for dependency installation
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/frontend/package.json ./apps/frontend/
 
-# Install dependencies
+# Layer 3: Install dependencies (cached when package.json files don't change)
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Layer 4: Copy source code
 COPY packages/shared ./packages/shared
 COPY apps/frontend ./apps/frontend
 
-# Build shared package first
-RUN pnpm --filter @relayforge/shared build
-
-# Build frontend
+# Layer 5: Build everything in parallel using turbo
 ENV NODE_ENV=production
-RUN pnpm --filter relayforge-frontend build
+RUN pnpm turbo run build --filter=relayforge-frontend...
 
 # Production stage - nginx
 FROM nginx:alpine

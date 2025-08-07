@@ -6,36 +6,28 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy workspace files
+# Layer 1: Package files (changes least frequently)
 COPY pnpm-*.yaml ./
 COPY package.json ./
 COPY tsconfig.json ./
+COPY turbo.json ./
+
+# Layer 2: All package.json files for dependency installation
 COPY packages/database/package.json ./packages/database/
 COPY packages/mcp-adapter/package.json ./packages/mcp-adapter/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/oauth-service/package.json ./apps/oauth-service/
 COPY apps/mcp-gateway/package.json ./apps/mcp-gateway/
 
-# Install dependencies
+# Layer 3: Install dependencies (cached when package.json files don't change)
 RUN pnpm install --frozen-lockfile
 
-# Copy source code and configs
-COPY packages/database ./packages/database
-COPY packages/mcp-adapter ./packages/mcp-adapter
-COPY packages/shared ./packages/shared
-COPY apps/oauth-service ./apps/oauth-service
-COPY apps/mcp-gateway ./apps/mcp-gateway
-COPY turbo.json ./
+# Layer 4: Copy source code
+COPY packages ./packages
+COPY apps ./apps
 
-# Build packages in dependency order
-RUN pnpm --filter @relayforge/database build
-RUN pnpm --filter @relayforge/shared build
-RUN pnpm --filter @relayforge/mcp-adapter build
-RUN pnpm --filter @relayforge/oauth-service build
-RUN pnpm --filter mcp-gateway build
-
-# Verify build output
-RUN ls -la apps/mcp-gateway/
+# Layer 5: Build everything in parallel using turbo
+RUN pnpm turbo run build --filter=mcp-gateway...
 
 # Production stage
 FROM node:20-alpine
@@ -44,15 +36,28 @@ RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
-# Copy built application
-COPY --from=builder /app/packages/database ./packages/database
-COPY --from=builder /app/packages/mcp-adapter ./packages/mcp-adapter
-COPY --from=builder /app/packages/shared ./packages/shared
-COPY --from=builder /app/apps/oauth-service ./apps/oauth-service
-COPY --from=builder /app/apps/mcp-gateway/dist ./apps/mcp-gateway/dist
+# Install pnpm for production
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files first
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-*.yaml ./
+COPY --from=builder /app/packages/database/package.json ./packages/database/
+COPY --from=builder /app/packages/mcp-adapter/package.json ./packages/mcp-adapter/
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/apps/oauth-service/package.json ./apps/oauth-service/
 COPY --from=builder /app/apps/mcp-gateway/package.json ./apps/mcp-gateway/
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/mcp-gateway/node_modules ./apps/mcp-gateway/node_modules
+
+# Copy built artifacts
+COPY --from=builder /app/packages/database/dist ./packages/database/dist
+COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+COPY --from=builder /app/packages/mcp-adapter/dist ./packages/mcp-adapter/dist
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
+COPY --from=builder /app/apps/mcp-gateway/dist ./apps/mcp-gateway/dist
+
+# Install production dependencies only
+RUN pnpm install --prod --frozen-lockfile
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
