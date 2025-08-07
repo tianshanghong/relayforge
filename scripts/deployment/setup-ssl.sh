@@ -13,22 +13,29 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Get domain from environment or ask user
+if [ -z "$DOMAIN" ]; then
+    read -p "Enter your domain (e.g., relayforge.xyz): " DOMAIN
+fi
+
 # Get email for Let's Encrypt
-read -p "Enter your email for Let's Encrypt notifications: " EMAIL
+if [ -z "$EMAIL" ]; then
+    read -p "Enter your email for Let's Encrypt notifications: " EMAIL
+fi
 
 # Domains to get certificates for
-DOMAINS="relayforge.xyz,api.relayforge.xyz,gateway.relayforge.xyz"
+DOMAINS="${DOMAIN},api.${DOMAIN},gateway.${DOMAIN}"
 
 echo ""
 echo "📋 Certificate will be requested for:"
-echo "   - relayforge.xyz"
-echo "   - api.relayforge.xyz"
-echo "   - gateway.relayforge.xyz"
+echo "   - ${DOMAIN}"
+echo "   - api.${DOMAIN}"
+echo "   - gateway.${DOMAIN}"
 echo ""
 
 # First, start nginx without SSL to handle ACME challenge
 echo "🚀 Starting nginx for ACME challenge..."
-cat > nginx/nginx-init.conf << 'EOF'
+cat > nginx/nginx-init.conf << EOF
 events {
     worker_connections 1024;
 }
@@ -36,14 +43,14 @@ events {
 http {
     server {
         listen 80;
-        server_name relayforge.xyz api.relayforge.xyz gateway.relayforge.xyz;
+        server_name ${DOMAIN} api.${DOMAIN} gateway.${DOMAIN};
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
 
         location / {
-            return 301 https://$host$request_uri;
+            return 301 https://\$host\$request_uri;
         }
     }
 }
@@ -83,8 +90,8 @@ echo ""
 echo "✅ SSL setup complete!"
 echo ""
 echo "🔒 Your sites are now available with HTTPS:"
-echo "   - https://relayforge.xyz"
-echo "   - https://api.relayforge.xyz"
-echo "   - https://gateway.relayforge.xyz"
+echo "   - https://${DOMAIN}"
+echo "   - https://api.${DOMAIN}"
+echo "   - https://gateway.${DOMAIN}"
 echo ""
 echo "📝 Certificates will auto-renew every 12 hours via certbot service"
