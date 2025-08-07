@@ -16,6 +16,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent stuck builds
     permissions:
       contents: read
       packages: write
@@ -59,6 +60,7 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
+      # Build for multiple platforms with better caching
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
@@ -68,9 +70,17 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Use both GHA and registry cache for better hit rates
+          cache-from: |
+            type=gha,scope=buildkit-${{ matrix.service.name }}
+            type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
+          cache-to: |
+            type=gha,mode=max,scope=buildkit-${{ matrix.service.name }}
+            type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
           platforms: linux/amd64,linux/arm64
+          # Reduce attestation overhead
+          provenance: false
+          sbom: false
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
