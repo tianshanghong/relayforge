@@ -33,7 +33,7 @@ pnpm lint       # Run linting
 
 ```
 User configures ONE stable URL:
-relayforge.com/mcp/u/happy-dolphin-42
+relayforge.xyz/mcp/u/happy-dolphin-42
 + Bearer token authentication
             ↓
     Provides access to:
@@ -69,7 +69,7 @@ Primary Account: alice@gmail.com
    - User account MUST exist before MCP token creation
    - System generates memorable slug for user (e.g., "happy-dolphin-42")
    - Creates MCP bearer token for new users
-   - Returns stable MCP URL: `https://relayforge.com/mcp/u/{slug}`
+   - Returns stable MCP URL: `https://relayforge.xyz/mcp/u/{slug}`
 
 2. **Automatic Account Merging** (Prevents Credit Abuse):
    - When authenticated user adds new OAuth provider
@@ -179,7 +179,7 @@ const servicePricing = {
   "mcpServers": {
     "relayforge": {
       "type": "http",
-      "url": "https://relayforge.com/mcp/u/happy-dolphin-42",  // Memorable URL
+      "url": "https://relayforge.xyz/mcp/u/happy-dolphin-42",  // Memorable URL
       "headers": {
         "Authorization": "Bearer mcp_live_xxxxxxxxxxxxx"      // Secure token
       },
@@ -323,7 +323,7 @@ async function userAuthenticationFlow() {
   
   // 6. Return secure MCP configuration
   return {
-    mcpUrl: `https://relayforge.com/mcp/u/${user.slug}`,
+    mcpUrl: `https://relayforge.xyz/mcp/u/${user.slug}`,
     mcpToken: mcpToken, // Only shown on creation!
     sessionId: session.sessionId, // For web UI only
     message: existingMapping ? "Welcome back!" : "Account created!"
@@ -429,13 +429,18 @@ class MCPGateway {
 - `POST /mcp/u/{slug}` - Main MCP request endpoint (requires Bearer token)
 - `GET /mcp/u/{slug}/ws` - WebSocket endpoint for streaming (requires Bearer token)
 
-### Token Management
-- `POST /api/tokens/revoke` - Revoke an MCP token (requires Bearer token)
+### Token Management (OAuth Service)
+- `GET /api/tokens` - List user's tokens (requires session cookie)
+- `POST /api/tokens` - Create new token (requires session cookie)
   ```json
   {
-    "tokenId": "token-uuid-here"
+    "name": "Claude Desktop"
   }
   ```
+- `DELETE /api/tokens/:tokenId` - Revoke a token (requires session cookie)
+
+### Service Discovery
+- `GET /api/services` - Get available services and account info (requires Bearer token)
 
 ### Health Check
 - `GET /health` - Gateway health check (no auth required)
@@ -457,9 +462,9 @@ class MCPGateway {
 - Real-time credit display in error messages
 - Comprehensive test coverage for billing flows
 - Environment variable documentation and setup (PR #46)
+- Token management UI (PR #49)
 
 ### 🚧 In Progress (Phase 2)
-- Token management UI (Issue #47)
 - Additional OAuth providers (GitHub, Slack)
 
 ### 📋 Planned (Phase 3)

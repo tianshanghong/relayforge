@@ -1,0 +1,113 @@
+name: Build and Publish Docker Images
+
+on:
+  push:
+    branches:
+      - main
+      - feat/docker-deployment # Remove this after testing
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/tianshanghong/relayforge
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent stuck builds
+    permissions:
+      contents: read
+      packages: write
+      security-events: write  # Needed for uploading SARIF results
+    
+    strategy:
+      matrix:
+        service:
+          - name: oauth-service
+            context: .
+            dockerfile: ./apps/oauth-service/Dockerfile
+          - name: mcp-gateway
+            context: .
+            dockerfile: ./apps/mcp-gateway/Dockerfile
+          - name: frontend
+            context: .
+            dockerfile: ./apps/frontend/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Build for multiple platforms with better caching
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Use registry cache only - more reliable than GHA cache
+          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
+          platforms: linux/amd64,linux/arm64
+          # Reduce attestation overhead
+          provenance: false
+          sbom: false
+          
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service.name }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service.name }}.sarif'
+          category: 'trivy-${{ matrix.service.name }}'
+
+  # Run database migrations as a separate job
+  migrate:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy notification
+        run: |
+          echo "Docker images built and pushed successfully!"
+          echo "To deploy to production:"
+          echo "1. SSH to your server"
+          echo "2. Pull the latest docker-compose.prod.yml"
+          echo "3. Run: docker-compose -f docker-compose.prod.yml pull"
+          echo "4. Run: docker-compose -f docker-compose.prod.yml up -d"

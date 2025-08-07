@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./services": "./dist/services/index.js"
+    "./services": "./dist/services/index.js",
+    "./dist/services": "./dist/services/index.js"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",

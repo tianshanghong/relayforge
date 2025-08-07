@@ -4,7 +4,6 @@ import { EventEmitter } from 'events';
 
 export class StdioMCPAdapter extends EventEmitter {
   private process: ChildProcess | null = null;
-  private messageQueue: string[] = [];
   private pendingRequests = new Map<string | number, {
     resolve: (value: MCPResponse) => void;
     reject: (error: Error) => void;
