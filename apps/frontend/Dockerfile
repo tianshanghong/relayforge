@@ -23,8 +23,11 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY apps/frontend ./apps/frontend
 
-# Layer 5: Build everything in parallel using turbo
+# Layer 5: Set environment variables for build
 ENV NODE_ENV=production
+ENV VITE_OAUTH_SERVICE_URL=https://api.relayforge.xyz
+
+# Layer 6: Build everything in parallel using turbo
 RUN pnpm turbo run build --filter=relayforge-frontend...
 
 # Production stage - nginx
@@ -36,10 +39,6 @@ COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy entrypoint script
-COPY apps/frontend/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 EXPOSE 80
 
-ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
