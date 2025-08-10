@@ -1,4 +1,4 @@
-import { SessionService } from '../services/session.service';
+import { SessionService } from '../services/session.service.js';
 
 export class SessionCleanupJob {
   private sessionService: SessionService;

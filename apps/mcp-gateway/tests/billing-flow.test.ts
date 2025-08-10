@@ -34,8 +34,20 @@ vi.mock('@relayforge/database', () => ({
     deductCredits: vi.fn(),
     getServicePricing: vi.fn(),
   })),
+  OAuthService: vi.fn().mockImplementation(() => ({
+    getToken: vi.fn(),
+    refreshToken: vi.fn(),
+  })),
   mcpTokenService: {
     validateToken: vi.fn(),
+  },
+  crypto: {
+    encrypt: vi.fn(),
+    decrypt: vi.fn(),
+  },
+  McpTokenWithPlainText: vi.fn(),
+  SlugGenerator: {
+    generate: vi.fn(),
   },
 }));
 

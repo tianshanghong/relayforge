@@ -2,7 +2,10 @@ import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const prisma = new PrismaClient();
 const packageRoot = path.resolve(__dirname, '..');
 
@@ -123,15 +126,15 @@ beforeEach(async () => {
   try {
     // Clean all tables before each test using Prisma's deleteMany
     // This avoids table lock issues
-    await prisma.$transaction([
-      prisma.usage.deleteMany(),
-      prisma.session.deleteMany(),
-      prisma.oAuthConnection.deleteMany(),
-      prisma.mcpToken.deleteMany(),
-      prisma.linkedEmail.deleteMany(),
-      prisma.user.deleteMany(),
-      prisma.servicePricing.deleteMany(),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await tx.usage.deleteMany();
+      await tx.session.deleteMany();
+      await tx.oAuthConnection.deleteMany();
+      await tx.mcpToken.deleteMany();
+      await tx.linkedEmail.deleteMany();
+      await tx.user.deleteMany();
+      await tx.servicePricing.deleteMany();
+    });
     
     // Reset test helper counters
     const { resetTestHelpers } = await import('./helpers');

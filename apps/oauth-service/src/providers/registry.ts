@@ -1,5 +1,5 @@
 import { OAuthProvider } from './base.provider';
-import { createGoogleProvider } from './google.provider';
+import { createGoogleProvider } from './google.provider.js';
 
 export class ProviderRegistry {
   private providers: Map<string, OAuthProvider> = new Map();

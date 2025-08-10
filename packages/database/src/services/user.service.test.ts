@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { userService } from './index';
-import { prisma } from '../index';
+import { userService } from './index.js';
+import { prisma } from '../index.js';
 
 describe('UserService Credit Management', () => {
   let testUserId: string;

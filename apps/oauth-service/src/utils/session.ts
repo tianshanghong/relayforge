@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '@relayforge/database';
-import { config } from '../config';
+import { config } from '../config.js';
 
 export class SessionManager {
   static generateSessionId(): string {

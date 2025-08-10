@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { UserService, OAuthService as DatabaseOAuthService } from '@relayforge/database';
-import { SessionManager } from '../utils/session';
+import { SessionManager } from '../utils/session.js';
 
 // Request schemas
 const AuthorizationHeaderSchema = z.string().regex(/^Bearer .+$/);

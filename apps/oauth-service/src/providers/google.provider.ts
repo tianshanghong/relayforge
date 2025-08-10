@@ -1,7 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { OAuthProvider, TokenSet, UserInfo } from './base.provider';
-import { OAuthError } from '../utils/errors';
-import { config } from '../config';
+import { OAuthError } from '../utils/errors.js';
+import { config } from '../config.js';
 
 export class GoogleOAuthProvider implements OAuthProvider {
   name = 'google';

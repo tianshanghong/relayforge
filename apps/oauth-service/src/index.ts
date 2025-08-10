@@ -3,13 +3,13 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import { authRoutes } from './routes/auth.routes';
-import { accountRoutes } from './routes/account.routes';
-import { sessionRoutes } from './routes/session.routes';
-import { tokensRoutes } from './routes/tokens.routes';
-import { config } from './config';
-import { errorHandler } from './middleware/error-handler';
-import { sessionCleanupJob } from './jobs/session-cleanup';
+import { authRoutes } from './routes/auth.routes.js';
+import { accountRoutes } from './routes/account.routes.js';
+import { sessionRoutes } from './routes/session.routes.js';
+import { tokensRoutes } from './routes/tokens.routes.js';
+import { config } from './config.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { sessionCleanupJob } from './jobs/session-cleanup.js';
 
 async function start() {
   const fastify = Fastify({
