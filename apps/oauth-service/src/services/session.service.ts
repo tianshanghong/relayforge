@@ -1,5 +1,5 @@
 import { UserService, prisma } from '@relayforge/database';
-import { config } from '../config';
+import { config } from '../config.js';
 
 export interface CreateSessionOptions {
   userId: string;

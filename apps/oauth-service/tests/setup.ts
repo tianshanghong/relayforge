@@ -17,8 +17,13 @@ if (!process.env.DATABASE_URL) {
 // Import after setting env vars
 import { execSync } from 'child_process';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { afterEach, beforeEach } from 'vitest';
 import { prisma } from '@relayforge/database';
+
+// Get __dirname equivalent in ESM
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Ensure database schema is up to date
 const databasePath = path.join(__dirname, '../../../packages/database');
@@ -38,30 +43,50 @@ try {
 beforeEach(async () => {
   try {
     // Clean up before each test to ensure isolation
-    await prisma.$transaction([
-      prisma.oAuthConnection.deleteMany(),
-      prisma.session.deleteMany(),
-      prisma.linkedEmail.deleteMany(),
-      prisma.user.deleteMany(),
-    ]);
+    // Check if prisma.$transaction exists before using it
+    if (prisma && typeof prisma.$transaction === 'function') {
+      await prisma.$transaction(async (tx) => {
+        await tx.oAuthConnection.deleteMany();
+        await tx.session.deleteMany();
+        await tx.linkedEmail.deleteMany();
+        await tx.user.deleteMany();
+      });
+    } else {
+      // Fallback to individual deletes if transaction is not available
+      await prisma.oAuthConnection.deleteMany();
+      await prisma.session.deleteMany();
+      await prisma.linkedEmail.deleteMany();
+      await prisma.user.deleteMany();
+    }
   } catch (error) {
-    // If database is not ready, continue anyway
-    console.warn('Database cleanup failed in beforeEach:', error);
+    // Database cleanup failure should fail tests to prevent test pollution
+    console.error('Database cleanup failed in beforeEach:', error);
+    throw new Error(`Failed to clean database before test: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 });
 
 afterEach(async () => {
   try {
     // Clean up after each test
-    await prisma.$transaction([
-      prisma.oAuthConnection.deleteMany(),
-      prisma.session.deleteMany(),
-      prisma.linkedEmail.deleteMany(),
-      prisma.user.deleteMany(),
-    ]);
+    // Check if prisma.$transaction exists before using it
+    if (prisma && typeof prisma.$transaction === 'function') {
+      await prisma.$transaction(async (tx) => {
+        await tx.oAuthConnection.deleteMany();
+        await tx.session.deleteMany();
+        await tx.linkedEmail.deleteMany();
+        await tx.user.deleteMany();
+      });
+    } else {
+      // Fallback to individual deletes if transaction is not available
+      await prisma.oAuthConnection.deleteMany();
+      await prisma.session.deleteMany();
+      await prisma.linkedEmail.deleteMany();
+      await prisma.user.deleteMany();
+    }
   } catch (error) {
-    // If database is not ready, continue anyway
-    console.warn('Database cleanup failed in afterEach:', error);
+    // Database cleanup failure should fail tests to prevent test pollution
+    console.error('Database cleanup failed in afterEach:', error);
+    throw new Error(`Failed to clean database after test: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 });
 

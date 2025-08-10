@@ -1,6 +1,6 @@
-import { prisma } from '../index';
-import { crypto } from '../crypto';
-import { SlugGenerator } from './slug-generator';
+import { prisma } from '../index.js';
+import { crypto } from '../crypto.js';
+import { SlugGenerator } from './slug-generator.js';
 import type { User, LinkedEmail } from '@prisma/client';
 
 export interface CreateUserInput {
@@ -134,22 +134,24 @@ export class UserService {
     }
 
     // Update user's primary email and linked email flags
-    const [user] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { primaryEmail: normalizedEmail },
-      }),
-      // Set all emails to non-primary
-      prisma.linkedEmail.updateMany({
-        where: { userId },
-        data: { isPrimary: false },
-      }),
-      // Set new primary
-      prisma.linkedEmail.update({
-        where: { email: normalizedEmail },
-        data: { isPrimary: true },
-      }),
-    ]);
+    const [user] = await prisma.$transaction(async (tx) => {
+      return Promise.all([
+        tx.user.update({
+          where: { id: userId },
+          data: { primaryEmail: normalizedEmail },
+        }),
+        // Set all emails to non-primary
+        tx.linkedEmail.updateMany({
+          where: { userId },
+          data: { isPrimary: false },
+        }),
+        // Set new primary
+        tx.linkedEmail.update({
+          where: { email: normalizedEmail },
+          data: { isPrimary: true },
+        }),
+      ]);
+    });
 
     return user;
   }

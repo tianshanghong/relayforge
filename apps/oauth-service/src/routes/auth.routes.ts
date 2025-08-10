@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { oauthFlowService } from '../services/oauth.service';
-import { providerRegistry } from '../providers/registry';
-import { config } from '../config';
-import { OAuthError } from '../utils/errors';
+import { oauthFlowService } from '../services/oauth.service.js';
+import { providerRegistry } from '../providers/registry.js';
+import { config } from '../config.js';
+import { OAuthError } from '../utils/errors.js';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   /**

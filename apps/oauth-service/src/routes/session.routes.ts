@@ -1,6 +1,6 @@
-import { FastifyInstance } from 'fastify';
-import { SessionService } from '../services';
-import { authenticateUser, requireAdmin } from '../middleware/auth';
+import type { FastifyInstance } from 'fastify';
+import { SessionService } from '../services/index.js';
+import { authenticateUser, requireAdmin } from '../middleware/auth.js';
 
 export interface SessionCreateBody {
   userId?: string; // Optional - can be extracted from auth token

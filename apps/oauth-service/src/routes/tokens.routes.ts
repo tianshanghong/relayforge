@@ -1,6 +1,6 @@
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { McpTokenService } from '@relayforge/database';
-import { authenticateUser } from '../middleware/auth';
+import { authenticateUser } from '../middleware/auth.js';
 import { z } from 'zod';
 
 // Request/Response schemas

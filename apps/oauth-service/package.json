@@ -2,6 +2,7 @@
   "name": "@relayforge/oauth-service",
   "version": "0.0.1",
   "description": "OAuth authentication service for RelayForge",
+  "type": "module",
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
@@ -15,6 +16,7 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:security": "node tests/security/run-security-tests.mjs",
     "test:performance": "vitest run --config vitest.config.load.ts",
     "test:performance:watch": "vitest --watch --config vitest.config.load.ts"
   },
@@ -37,12 +39,15 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.5",
+    "@types/node-fetch": "^2.6.13",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",
+    "node-fetch": "^3.3.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vite": "^7.0.6",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vitest-environment-vprisma": "^1.3.0"
   }
 }

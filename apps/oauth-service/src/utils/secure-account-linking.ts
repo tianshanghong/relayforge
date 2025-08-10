@@ -54,7 +54,7 @@ export class SecureAccountLinking {
     if (existingUser) {
       // Check if this provider is already connected
       const hasProvider = existingUser.oauthConnections.some(
-        (conn) => conn.provider === provider && conn.email === normalizedEmail
+        (conn: any) => conn.provider === provider && conn.email === normalizedEmail
       );
 
       if (hasProvider) {

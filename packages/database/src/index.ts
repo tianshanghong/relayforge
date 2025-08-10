@@ -1,8 +1,8 @@
 export { PrismaClient } from '@prisma/client';
 export type { User, LinkedEmail, OAuthConnection, Session, Usage, ServicePricing } from '@prisma/client';
-export { CryptoService, crypto } from './crypto';
-export * from './services';
-export * from './jobs';
+export { CryptoService, crypto } from './crypto.js';
+export * from './services/index.js';
+export * from './jobs/index.js';
 
 // Prisma client singleton
 import { PrismaClient } from '@prisma/client';

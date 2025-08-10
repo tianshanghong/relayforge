@@ -1,4 +1,4 @@
-import { prisma } from '../index';
+import { prisma } from '../index.js';
 import crypto from 'crypto';
 
 // Word lists for memorable slugs

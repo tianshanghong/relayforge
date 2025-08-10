@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -31,7 +31,7 @@ ENV VITE_OAUTH_SERVICE_URL=https://api.relayforge.xyz
 RUN pnpm turbo run build --filter=relayforge-frontend...
 
 # Production stage - nginx
-FROM nginx:alpine
+FROM nginx:stable
 
 # Copy built files
 COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html

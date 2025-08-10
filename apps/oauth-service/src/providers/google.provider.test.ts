@@ -11,7 +11,7 @@ vi.mock('../config', () => ({
   }
 }));
 
-import { GoogleOAuthProvider } from './google.provider';
+import { GoogleOAuthProvider } from './google.provider.js';
 
 describe('GoogleOAuthProvider', () => {
   it('should create provider instance', () => {

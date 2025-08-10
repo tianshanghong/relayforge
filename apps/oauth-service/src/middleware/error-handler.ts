@@ -1,6 +1,6 @@
-import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { OAuthError } from '../utils/errors';
+import { OAuthError } from '../utils/errors.js';
 
 export async function errorHandler(
   error: FastifyError,

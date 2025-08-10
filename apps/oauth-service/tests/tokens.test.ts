@@ -3,23 +3,19 @@ import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import { tokensRoutes } from '../src/routes/tokens.routes';
 import { authenticateUser } from '../src/middleware/auth';
-import { McpTokenService, UserService, prisma } from '@relayforge/database';
+import * as database from '@relayforge/database';
 
 // Create mock functions
 const mockGetUserTokens = vi.fn();
 const mockCreateToken = vi.fn();
 const mockRevokeToken = vi.fn();
 
-// Mock the database services
-vi.mock('@relayforge/database', () => ({
-  McpTokenService: vi.fn().mockImplementation(() => ({
-    getUserTokens: mockGetUserTokens,
-    createToken: mockCreateToken,
-    revokeToken: mockRevokeToken,
-  })),
-  UserService: vi.fn(),
-  prisma: {},
-}));
+// Mock McpTokenService constructor
+vi.spyOn(database, 'McpTokenService').mockImplementation(() => ({
+  getUserTokens: mockGetUserTokens,
+  createToken: mockCreateToken,
+  revokeToken: mockRevokeToken,
+} as any));
 
 // Mock the auth middleware
 vi.mock('../src/middleware/auth', () => ({

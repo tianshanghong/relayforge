@@ -34,15 +34,15 @@ export const createTestUser = async (
 
 export const cleanupTestData = async () => {
   // Clean in the correct order to respect foreign key constraints
-  await prisma.$transaction([
-    prisma.usage.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.oAuthConnection.deleteMany(),
-    prisma.mcpToken.deleteMany(),
-    prisma.linkedEmail.deleteMany(),
-    prisma.user.deleteMany(),
-    prisma.servicePricing.deleteMany(),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.usage.deleteMany();
+    await tx.session.deleteMany();
+    await tx.oAuthConnection.deleteMany();
+    await tx.mcpToken.deleteMany();
+    await tx.linkedEmail.deleteMany();
+    await tx.user.deleteMany();
+    await tx.servicePricing.deleteMany();
+  });
   
   resetTestHelpers();
 };

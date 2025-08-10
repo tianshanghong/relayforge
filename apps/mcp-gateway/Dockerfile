@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -30,9 +30,9 @@ COPY apps ./apps
 RUN pnpm turbo run build --filter=mcp-gateway...
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-slim
 
-RUN apk add --no-cache dumb-init
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -60,8 +60,8 @@ COPY --from=builder /app/apps/mcp-gateway/dist ./apps/mcp-gateway/dist
 RUN pnpm install --prod --frozen-lockfile
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
 
 USER nodejs
 

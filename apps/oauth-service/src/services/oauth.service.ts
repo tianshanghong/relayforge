@@ -7,11 +7,11 @@ import {
   SlugGenerator
 } from '@relayforge/database';
 import { Prisma } from '@prisma/client';
-import { providerRegistry } from '../providers/registry';
-import { CSRFManager } from '../utils/csrf';
-import { SessionManager } from '../utils/session';
-import { OAuthError } from '../utils/errors';
-import { tokenRefreshLock } from '../utils/token-lock';
+import { providerRegistry } from '../providers/registry.js';
+import { CSRFManager } from '../utils/csrf.js';
+import { SessionManager } from '../utils/session.js';
+import { OAuthError } from '../utils/errors.js';
+import { tokenRefreshLock } from '../utils/token-lock.js';
 
 export class OAuthFlowService {
   private dbOAuthService: DatabaseOAuthService;
@@ -311,7 +311,7 @@ export class OAuthFlowService {
         where: { userId: existingUser.id },
       });
       const hasThisConnection = connections.some(
-        (c) => c.provider === provider && c.email === email
+        (c: any) => c.provider === provider && c.email === email
       );
 
       return {

@@ -1,4 +1,4 @@
-import { prisma } from '../index';
+import { prisma } from '../index.js';
 import type { Usage, ServicePricing } from '@prisma/client';
 
 export interface TrackUsageInput {

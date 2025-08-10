@@ -122,13 +122,15 @@ describe.skip('100k User Scale Test', () => {
     console.log(`✅ Setup completed in ${setupTime.toFixed(2)} seconds`);
     
     // Get database statistics
-    const stats = await prisma.$transaction([
-      prisma.user.count(),
-      prisma.linkedEmail.count(),
-      prisma.session.count(),
-      prisma.oAuthConnection.count(),
-      prisma.usage.count(),
-    ]);
+    const stats = await prisma.$transaction(async (tx) => {
+      return Promise.all([
+        tx.user.count(),
+        tx.linkedEmail.count(),
+        tx.session.count(),
+        tx.oAuthConnection.count(),
+        tx.usage.count(),
+      ]);
+    });
     
     console.log('\n📊 Database Statistics:');
     console.log(`  Users: ${stats[0].toLocaleString()}`);

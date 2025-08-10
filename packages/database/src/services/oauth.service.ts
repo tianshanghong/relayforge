@@ -1,5 +1,5 @@
-import { prisma } from '../index';
-import { crypto } from '../crypto';
+import { prisma } from '../index.js';
+import { crypto } from '../crypto.js';
 import type { OAuthConnection } from '@prisma/client';
 
 export interface StoreOAuthTokensInput {
