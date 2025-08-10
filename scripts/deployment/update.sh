@@ -41,7 +41,7 @@ docker-compose -f docker-compose.prod.yml pull || handle_error "Failed to pull D
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
-docker-compose -f docker-compose.prod.yml run --rm oauth-service npx prisma migrate deploy || handle_error "Database migration failed"
+docker-compose -f docker-compose.prod.yml run --rm oauth-service sh -c "cd /app/packages/database && npx prisma migrate deploy" || handle_error "Database migration failed"
 
 # Restart services with zero downtime
 echo "🔄 Updating services..."
