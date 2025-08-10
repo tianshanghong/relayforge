@@ -34,7 +34,11 @@ docker-compose -f docker-compose.prod.yml pull
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
-docker-compose -f docker-compose.prod.yml run --rm oauth-service npx prisma migrate deploy
+# First start only the database
+docker-compose -f docker-compose.prod.yml up -d postgres
+sleep 5
+# Run migrations from the database package
+docker-compose -f docker-compose.prod.yml run --rm oauth-service sh -c "cd /app/packages/database && npx prisma migrate deploy"
 
 # Start services
 echo "🚀 Starting services..."

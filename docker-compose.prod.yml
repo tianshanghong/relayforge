@@ -3,7 +3,7 @@ version: '3.9'
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_DB: relayforge
@@ -76,7 +76,7 @@ services:
 
   # Nginx Reverse Proxy
   nginx:
-    image: nginx:alpine
+    image: nginx:stable
     restart: unless-stopped
     ports:
       - "80:80"
