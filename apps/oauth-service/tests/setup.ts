@@ -59,8 +59,9 @@ beforeEach(async () => {
       await prisma.user.deleteMany();
     }
   } catch (error) {
-    // If database is not ready, continue anyway
-    console.warn('Database cleanup failed in beforeEach:', error);
+    // Database cleanup failure should fail tests to prevent test pollution
+    console.error('Database cleanup failed in beforeEach:', error);
+    throw new Error(`Failed to clean database before test: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 });
 
@@ -83,8 +84,9 @@ afterEach(async () => {
       await prisma.user.deleteMany();
     }
   } catch (error) {
-    // If database is not ready, continue anyway
-    console.warn('Database cleanup failed in afterEach:', error);
+    // Database cleanup failure should fail tests to prevent test pollution
+    console.error('Database cleanup failed in afterEach:', error);
+    throw new Error(`Failed to clean database after test: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 });
 
