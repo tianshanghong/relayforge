@@ -73,8 +73,8 @@ jobs:
           # Use inline cache to avoid registry cache export timeout
           cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
           cache-to: type=inline
-          # Build only AMD64 for PRs (faster), both platforms for main
-          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          # Build only ARM64 for PRs (for ARM64 test machines), both platforms for main
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/amd64,linux/arm64' }}
           # Reduce attestation overhead
           provenance: false
           sbom: false
