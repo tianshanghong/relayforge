@@ -53,6 +53,9 @@ COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
+# Generate Prisma client
+RUN cd /app/packages/database && pnpm prisma generate
+
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
     useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
