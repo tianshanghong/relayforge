@@ -15,7 +15,9 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # Use Buildjet ARM64 runners for native ARM64 builds (much faster than emulation)
+    # Falls back to ubuntu-latest if Buildjet is unavailable
+    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
     permissions:
       contents: read
@@ -28,12 +30,15 @@ jobs:
           - name: oauth-service
             context: .
             dockerfile: ./apps/oauth-service/Dockerfile
+            runner: buildjet-2vcpu-ubuntu-2204-arm
           - name: mcp-gateway
             context: .
             dockerfile: ./apps/mcp-gateway/Dockerfile
+            runner: buildjet-2vcpu-ubuntu-2204-arm
           - name: frontend
             context: .
             dockerfile: ./apps/frontend/Dockerfile
+            runner: buildjet-2vcpu-ubuntu-2204-arm
 
     steps:
       - name: Checkout code
@@ -73,7 +78,7 @@ jobs:
           # Use inline cache to avoid registry cache export timeout
           cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
           cache-to: type=inline
-          # Build only ARM64 for PRs (for ARM64 test machines), both platforms for main
+          # Build only ARM64 for PRs (native on Buildjet), both platforms for main
           platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/amd64,linux/arm64' }}
           # Reduce attestation overhead
           provenance: false
