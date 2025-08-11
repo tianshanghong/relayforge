@@ -17,7 +17,7 @@ jobs:
   build-and-push:
     # Use Buildjet ARM64 runners for native ARM64 builds (much faster than emulation)
     # Falls back to ubuntu-latest if Buildjet is unavailable
-    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.service.runner || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
     permissions:
       contents: read
