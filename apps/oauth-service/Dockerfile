@@ -17,18 +17,15 @@ COPY packages/database/package.json ./packages/database/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/oauth-service/package.json ./apps/oauth-service/
 
-# Layer 3: Install dependencies with cache mount for pnpm store
-# This caches pnpm packages between builds, making rebuilds much faster
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+# Layer 3: Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Layer 4: Copy source code
 COPY packages ./packages
 COPY apps/oauth-service ./apps/oauth-service
 
-# Layer 5: Build with turbo cache mount
-RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
-    pnpm turbo run build --filter=@relayforge/oauth-service...
+# Layer 5: Build everything in parallel using turbo
+RUN pnpm turbo run build --filter=@relayforge/oauth-service...
 
 # Production stage
 FROM node:20-slim
@@ -54,9 +51,8 @@ COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
 
-# Install production dependencies with cache mount
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --prod --frozen-lockfile
+# Install production dependencies only
+RUN pnpm install --prod --frozen-lockfile
 
 # Generate Prisma client (uses pnpm dlx which is faster than npx)
 RUN cd packages/database && pnpm dlx prisma generate

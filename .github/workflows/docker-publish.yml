@@ -15,8 +15,6 @@ env:
 
 jobs:
   build-and-push:
-    # Use Buildjet ARM64 runners for native ARM64 builds (much faster than emulation)
-    # Falls back to ubuntu-latest if Buildjet is unavailable
     runs-on: ${{ matrix.service.runner || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
     permissions:
@@ -75,11 +73,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # No external cache - rely on BuildKit cache mounts in Dockerfile
-          # This is simpler and the cache mounts handle dependency caching
-          # Build only ARM64 for PRs (native on Buildjet), both platforms for main
+          # Build ARM64 only for PRs (faster), both platforms for main
           platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/amd64,linux/arm64' }}
-          # Reduce attestation overhead
           provenance: false
           sbom: false
           
