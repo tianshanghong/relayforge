@@ -30,15 +30,15 @@ jobs:
           - name: oauth-service
             context: .
             dockerfile: ./apps/oauth-service/Dockerfile
-            runner: buildjet-2vcpu-ubuntu-2204-arm
+            runner: buildjet-4vcpu-ubuntu-2204-arm
           - name: mcp-gateway
             context: .
             dockerfile: ./apps/mcp-gateway/Dockerfile
-            runner: buildjet-2vcpu-ubuntu-2204-arm
+            runner: buildjet-4vcpu-ubuntu-2204-arm
           - name: frontend
             context: .
             dockerfile: ./apps/frontend/Dockerfile
-            runner: buildjet-2vcpu-ubuntu-2204-arm
+            runner: buildjet-4vcpu-ubuntu-2204-arm
 
     steps:
       - name: Checkout code
@@ -75,9 +75,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Use inline cache to avoid registry cache export timeout
-          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
-          cache-to: type=inline
+          # No external cache - rely on BuildKit cache mounts in Dockerfile
+          # This is simpler and the cache mounts handle dependency caching
           # Build only ARM64 for PRs (native on Buildjet), both platforms for main
           platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/amd64,linux/arm64' }}
           # Reduce attestation overhead
