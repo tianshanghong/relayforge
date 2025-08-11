@@ -4,8 +4,8 @@ import {
   ServiceNotFoundError, 
   OAuthTokenError, 
   ProviderNotMappedError 
-} from '../errors/gateway-errors';
-import { getProviderForService } from '../config/service-providers';
+} from '../errors/gateway-errors.js';
+import { getProviderForService } from '../config/service-providers.js';
 
 export interface ServiceConfig {
   name: string;

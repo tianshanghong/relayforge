@@ -4,13 +4,13 @@ dotenv.config();
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
-import { HelloWorldMCPServer } from './servers/hello-world';
-import { GoogleCalendarCompleteServer } from './servers/google-calendar-complete';
-import { TokenValidator } from './auth/token-validator';
-import { BillingService } from './services/billing.service';
-import { ServiceRouter } from './routing/service-router';
+import { HelloWorldMCPServer } from './servers/hello-world.js';
+import { GoogleCalendarCompleteServer } from './servers/google-calendar-complete.js';
+import { TokenValidator } from './auth/token-validator.js';
+import { BillingService } from './services/billing.service.js';
+import { ServiceRouter } from './routing/service-router.js';
 import { mcpTokenService } from '@relayforge/database';
-import { registerServiceDiscoveryRoutes } from './routes/service-discovery';
+import { registerServiceDiscoveryRoutes } from './routes/service-discovery.js';
 
 const fastify = Fastify({
   logger: true
