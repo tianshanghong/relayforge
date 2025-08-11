@@ -36,11 +36,7 @@ services:
       GOOGLE_REDIRECT_URI: https://api.relayforge.xyz/oauth/google/callback
       FRONTEND_URL: https://relayforge.xyz
       ADMIN_KEY: ${ADMIN_KEY}
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # Uses Node.js health check from Dockerfile
 
   # MCP Gateway
   mcp-gateway:
@@ -55,24 +51,20 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/relayforge
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       OAUTH_SERVICE_URL: http://oauth-service:3002
       GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+    # Uses Node.js health check from Dockerfile
 
-  # Frontend
+  # Frontend Application
   frontend:
     image: ghcr.io/tianshanghong/relayforge/frontend:latest
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Nginx Reverse Proxy
   nginx:
@@ -90,7 +82,7 @@ services:
       - frontend
       - oauth-service
       - mcp-gateway
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    command: /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'
 
   # Certbot for SSL certificates
   certbot:
@@ -99,7 +91,7 @@ services:
     volumes:
       - certbot_www:/var/www/certbot:rw
       - certbot_conf:/etc/letsencrypt:rw
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
 
 volumes:
   postgres_data:
