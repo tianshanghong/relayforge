@@ -15,7 +15,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ${{ matrix.service.runner || 'ubuntu-latest' }}
+    # Use Buildjet ARM64 for PRs (fast single platform), GitHub runners for main (free multi-platform)
+    runs-on: ${{ github.event_name == 'pull_request' && 'buildjet-4vcpu-ubuntu-2204-arm' || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
     permissions:
       contents: read
@@ -28,15 +29,12 @@ jobs:
           - name: oauth-service
             context: .
             dockerfile: ./apps/oauth-service/Dockerfile
-            runner: buildjet-4vcpu-ubuntu-2204-arm
           - name: mcp-gateway
             context: .
             dockerfile: ./apps/mcp-gateway/Dockerfile
-            runner: buildjet-4vcpu-ubuntu-2204-arm
           - name: frontend
             context: .
             dockerfile: ./apps/frontend/Dockerfile
-            runner: buildjet-4vcpu-ubuntu-2204-arm
 
     steps:
       - name: Checkout code
