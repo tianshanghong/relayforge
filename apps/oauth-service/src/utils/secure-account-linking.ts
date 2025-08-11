@@ -1,7 +1,7 @@
 import { prisma } from '@relayforge/database';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
-import { TokenSet } from '../providers/base.provider';
+import { TokenSet } from '../providers/base.provider.js';
 
 export interface PendingLinkSession {
   id: string;
