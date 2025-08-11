@@ -59,8 +59,8 @@ COPY --from=builder /app/apps/mcp-gateway/dist ./apps/mcp-gateway/dist
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
-# Generate Prisma client
-RUN cd /app/packages/database && pnpm prisma generate
+# Generate Prisma client using npx
+RUN cd /app/packages/database && npx prisma generate
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
