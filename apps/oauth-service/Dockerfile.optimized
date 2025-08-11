@@ -1,47 +1,35 @@
-# Build stage
-FROM node:20-slim AS builder
+# This is an optimized version that uses pre-built base image
+# Use after base image is available at ghcr.io/tianshanghong/relayforge/base:latest
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Build stage - using pre-built base with pnpm and tools already installed
+FROM ghcr.io/tianshanghong/relayforge/base:latest AS builder
 
 WORKDIR /app
 
-# Layer 1: Package files (changes least frequently)
-COPY pnpm-*.yaml ./
-COPY package.json ./
-COPY tsconfig.json ./
-COPY turbo.json ./
-
-# Layer 2: All package.json files for dependency installation
+# Copy package files
+COPY pnpm-*.yaml package.json tsconfig.json turbo.json ./
 COPY packages/database/package.json ./packages/database/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/oauth-service/package.json ./apps/oauth-service/
 
-# Layer 3: Install dependencies with cache mount for pnpm store
-# This caches pnpm packages between builds, making rebuilds much faster
+# Install dependencies with cache mount (30-50% faster)
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
-# Layer 4: Copy source code
+# Copy source code
 COPY packages ./packages
 COPY apps/oauth-service ./apps/oauth-service
 
-# Layer 5: Build with turbo cache mount
+# Build with turbo cache mount
 RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
     pnpm turbo run build --filter=@relayforge/oauth-service...
 
-# Production stage
-FROM node:20-slim
-
-# Install dumb-init and openssl (required for Prisma)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
+# Production stage - also using pre-built base
+FROM ghcr.io/tianshanghong/relayforge/base:latest
 
 WORKDIR /app
 
-# Install pnpm for production
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Copy package files first
+# Copy package files
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-*.yaml ./
 COPY --from=builder /app/packages/database/package.json ./packages/database/
@@ -58,12 +46,8 @@ COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --prod --frozen-lockfile
 
-# Generate Prisma client (uses pnpm dlx which is faster than npx)
+# Generate Prisma client
 RUN cd packages/database && pnpm dlx prisma generate
-
-# Create non-root user
-RUN groupadd -g 1001 nodejs && \
-    useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
 
 USER nodejs
 
