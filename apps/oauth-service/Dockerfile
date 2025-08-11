@@ -30,7 +30,8 @@ RUN pnpm turbo run build --filter=@relayforge/oauth-service...
 # Production stage
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init and openssl (required for Prisma)
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -53,8 +54,8 @@ COPY --from=builder /app/apps/oauth-service/dist ./apps/oauth-service/dist
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
-# Generate Prisma client using npx
-RUN cd /app/packages/database && npx prisma generate
+# Generate Prisma client (uses pnpm dlx which is faster than npx)
+RUN cd packages/database && pnpm dlx prisma generate
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
