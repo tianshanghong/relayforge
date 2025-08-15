@@ -175,11 +175,12 @@ If you want to restrict access to only Cloudflare (recommended), allow these IP 
 197.234.240.0/22
 198.41.128.0/17
 162.158.0.0/15
-104.16.0.0/12
+104.16.0.0/13
+104.24.0.0/14
 172.64.0.0/13
 131.0.72.0/22
 
-# IPv6 (if using IPv6)
+# IPv6
 2400:cb00::/32
 2606:4700::/32
 2803:f800::/32
@@ -188,6 +189,8 @@ If you want to restrict access to only Cloudflare (recommended), allow these IP 
 2a06:98c0::/29
 2c0f:f248::/32
 ```
+
+Note: These IPs are updated as of August 2025. Check [Cloudflare's IP list](https://www.cloudflare.com/ips/) for the latest ranges.
 
 ## Maintenance
 
