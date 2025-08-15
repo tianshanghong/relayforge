@@ -15,7 +15,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # Use Buildjet ARM64 for PRs (fast single platform), GitHub runners for main (free multi-platform)
+    runs-on: ${{ github.event_name == 'pull_request' && 'buildjet-4vcpu-ubuntu-2204-arm' || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
     permissions:
       contents: read
@@ -70,11 +71,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Use registry cache only - more reliable than GHA cache
-          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
-          platforms: linux/amd64,linux/arm64
-          # Reduce attestation overhead
+          # Build ARM64 only for PRs (faster), both platforms for main
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/amd64,linux/arm64' }}
           provenance: false
           sbom: false
           

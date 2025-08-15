@@ -19,7 +19,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY apps/oauth-service/package.json ./apps/oauth-service/
 COPY apps/mcp-gateway/package.json ./apps/mcp-gateway/
 
-# Layer 3: Install dependencies (cached when package.json files don't change)
+# Layer 3: Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Layer 4: Copy source code
@@ -32,7 +32,8 @@ RUN pnpm turbo run build --filter=mcp-gateway...
 # Production stage
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init and openssl (required for Prisma)
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -59,6 +60,9 @@ COPY --from=builder /app/apps/mcp-gateway/dist ./apps/mcp-gateway/dist
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
+# Generate Prisma client (uses pnpm dlx which is faster than npx)
+RUN cd packages/database && pnpm dlx prisma generate
+
 # Create non-root user
 RUN groupadd -g 1001 nodejs && \
     useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
@@ -68,6 +72,10 @@ USER nodejs
 EXPOSE 3001
 
 WORKDIR /app/apps/mcp-gateway
+
+# Built-in health check using node
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/server.js"]

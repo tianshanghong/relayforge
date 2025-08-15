@@ -1,5 +1,5 @@
 import { OAuth2Client } from 'google-auth-library';
-import { OAuthProvider, TokenSet, UserInfo } from './base.provider';
+import { OAuthProvider, TokenSet, UserInfo } from './base.provider.js';
 import { OAuthError } from '../utils/errors.js';
 import { config } from '../config.js';
 

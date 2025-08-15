@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { TokenValidator } from '../auth/token-validator';
-import { ServiceRouter } from '../routing/service-router';
+import { TokenValidator } from '../auth/token-validator.js';
+import { ServiceRouter } from '../routing/service-router.js';
 import { UserService } from '@relayforge/database';
 import { OAuthService } from '@relayforge/database';
 
@@ -13,7 +13,7 @@ export async function registerServiceDiscoveryRoutes(
   const userService = new UserService();
   const oauthService = new OAuthService();
 
-  fastify.get('/api/services', async (
+  fastify.get('/services', async (
     request: FastifyRequest,
     reply: FastifyReply
   ) => {
@@ -128,4 +128,4 @@ async function getServiceMethods(service: any): Promise<string[]> {
 }
 
 // Import provider mapping
-import { getProviderForService } from '../config/service-providers';
+import { getProviderForService } from '../config/service-providers.js';

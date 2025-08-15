@@ -1,4 +1,4 @@
-import { OAuthProvider } from './base.provider';
+import { OAuthProvider } from './base.provider.js';
 import { createGoogleProvider } from './google.provider.js';
 
 export class ProviderRegistry {

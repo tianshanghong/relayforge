@@ -119,7 +119,7 @@ Router: {
 ### 3. Service Discovery
 ```typescript
 // Our custom API (not part of MCP protocol)
-GET /api/services
+GET https://api.relayforge.xyz/services
 Headers: {
   "Authorization": "Bearer mcp_live_xxxxx"
 }
@@ -440,7 +440,7 @@ class MCPGateway {
 - `DELETE /api/tokens/:tokenId` - Revoke a token (requires session cookie)
 
 ### Service Discovery
-- `GET /api/services` - Get available services and account info (requires Bearer token)
+- `GET /services` - Get available services and account info (requires Bearer token)
 
 ### Health Check
 - `GET /health` - Gateway health check (no auth required)
@@ -457,7 +457,7 @@ class MCPGateway {
 - OAuth token refresh with automatic retry
 - WebSocket support
 - Google Calendar MCP server (full CRUD operations)
-- Service discovery API (/api/services)
+- Service discovery API (/services)
 - Usage tracking and billing (with method-level tracking)
 - Real-time credit display in error messages
 - Comprehensive test coverage for billing flows

@@ -16,6 +16,13 @@ out/
 .env.test.local
 .env.production.local
 
+# SSL certificates and keys
+nginx/ssl/
+*.pem
+*.key
+*.crt
+*.cer
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

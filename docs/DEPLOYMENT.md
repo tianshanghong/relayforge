@@ -48,12 +48,18 @@ exit
 
 ## Step 2: DNS Configuration (2 minutes)
 
+### Option A: Using Cloudflare (Recommended)
+See [Cloudflare Setup Guide](./CLOUDFLARE_SETUP.md) for detailed instructions on:
+- Setting up Cloudflare proxy with DDoS protection
+- Configuring Origin Certificates for SSL
+- Enabling Full SSL mode for end-to-end encryption
+
+### Option B: Direct DNS
 In your DNS provider, create these A records:
 
 ```
 @        A    <your-server-ip>    # relayforge.xyz
 api      A    <your-server-ip>    # api.relayforge.xyz
-gateway  A    <your-server-ip>    # gateway.relayforge.xyz
 ```
 
 ## Step 3: Google OAuth Setup (2 minutes)
@@ -98,10 +104,14 @@ GOOGLE_CLIENT_SECRET=<your-client-secret>
 Continue deployment:
 ```bash
 # Deploy services
-./scripts/deployment/deploy.sh
+docker-compose -f docker-compose.prod.yml up -d
 
-# Set up SSL certificates
-sudo ./scripts/deployment/setup-ssl.sh
+# For SSL setup, choose one:
+# Option A: Cloudflare (recommended) - see docs/CLOUDFLARE_SETUP.md
+./scripts/setup-cloudflare-ssl.sh
+
+# Option B: Let's Encrypt (if not using Cloudflare)
+# (Let's Encrypt setup coming soon)
 ```
 
 ## Step 5: Verify Deployment
@@ -141,9 +151,11 @@ docker-compose -f docker-compose.prod.yml up -d
 - Ensure ports 80 and 443 are not in use
 
 ### SSL certificate issues
-- Wait for DNS propagation (can take up to 48 hours)
-- Check DNS records: `dig relayforge.xyz`
-- Ensure port 80 is accessible for ACME challenge
+- **Using Cloudflare:** See [Cloudflare Setup Guide](./CLOUDFLARE_SETUP.md) troubleshooting section
+- **Using Let's Encrypt:** 
+  - Wait for DNS propagation (can take up to 48 hours)
+  - Check DNS records: `dig relayforge.xyz`
+  - Ensure port 80 is accessible for ACME challenge
 
 ### OAuth not working
 - Verify redirect URI in Google Cloud Console matches exactly

@@ -75,14 +75,14 @@ describe('Service Discovery API', () => {
     vi.clearAllMocks();
   });
 
-  describe('GET /api/services', () => {
+  describe('GET /services', () => {
     describe('Authentication', () => {
       it('should return 401 for missing bearer token', async () => {
         tokenValidator.validateBearerToken.mockResolvedValue(null);
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
         });
 
         expect(response.statusCode).toBe(401);
@@ -98,7 +98,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer invalid_token',
           },
@@ -124,7 +124,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -224,7 +224,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -270,7 +270,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -300,7 +300,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -322,7 +322,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -347,7 +347,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -367,7 +367,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -388,7 +388,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -405,7 +405,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -470,7 +470,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -525,7 +525,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
@@ -581,7 +581,7 @@ describe('Service Discovery API', () => {
 
         const response = await fastify.inject({
           method: 'GET',
-          url: '/api/services',
+          url: '/services',
           headers: {
             authorization: 'Bearer mcp_live_test123',
           },
