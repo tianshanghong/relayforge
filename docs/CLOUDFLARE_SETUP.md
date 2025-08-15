@@ -123,9 +123,10 @@ docker-compose -f docker-compose.prod.yml up -d nginx
 1. Visit https://relayforge.xyz - should load without certificate warnings
 2. Check SSL status at https://www.ssllabs.com/ssltest/
 3. Verify API endpoints work:
-   - https://api.relayforge.xyz/health
-   - https://api.relayforge.xyz/health/oauth
-   - https://api.relayforge.xyz/health/gateway
+   - https://api.relayforge.xyz/health - Combined health check
+   - https://api.relayforge.xyz/health/oauth - OAuth service health
+   - https://api.relayforge.xyz/health/gateway - MCP Gateway health
+   - https://api.relayforge.xyz/services - Service discovery (requires auth)
 
 ## Troubleshooting
 

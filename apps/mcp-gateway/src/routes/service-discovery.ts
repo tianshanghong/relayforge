@@ -13,7 +13,7 @@ export async function registerServiceDiscoveryRoutes(
   const userService = new UserService();
   const oauthService = new OAuthService();
 
-  fastify.get('/api/services', async (
+  fastify.get('/services', async (
     request: FastifyRequest,
     reply: FastifyReply
   ) => {
