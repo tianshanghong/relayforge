@@ -60,7 +60,6 @@ In your DNS provider, create these A records:
 ```
 @        A    <your-server-ip>    # relayforge.xyz
 api      A    <your-server-ip>    # api.relayforge.xyz
-gateway  A    <your-server-ip>    # gateway.relayforge.xyz
 ```
 
 ## Step 3: Google OAuth Setup (2 minutes)
