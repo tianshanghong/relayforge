@@ -36,6 +36,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: https://api.relayforge.xyz/oauth/google/callback
       FRONTEND_URL: https://relayforge.xyz
+      ALLOWED_ORIGINS: https://relayforge.xyz,http://localhost:5173
       ADMIN_KEY: ${ADMIN_KEY}
     # Uses Node.js health check from Dockerfile
 
