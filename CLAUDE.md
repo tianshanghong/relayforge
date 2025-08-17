@@ -179,7 +179,7 @@ const servicePricing = {
   "mcpServers": {
     "relayforge": {
       "type": "http",
-      "url": "https://relayforge.xyz/mcp/u/happy-dolphin-42",  // Memorable URL
+      "url": "https://api.relayforge.xyz/mcp/u/happy-dolphin-42",  // Memorable URL
       "headers": {
         "Authorization": "Bearer mcp_live_xxxxxxxxxxxxx"      // Secure token
       },
@@ -323,7 +323,7 @@ async function userAuthenticationFlow() {
   
   // 6. Return secure MCP configuration
   return {
-    mcpUrl: `https://relayforge.xyz/mcp/u/${user.slug}`,
+    mcpUrl: `https://api.relayforge.xyz/mcp/u/${user.slug}`,
     mcpToken: mcpToken, // Only shown on creation!
     sessionId: session.sessionId, // For web UI only
     message: existingMapping ? "Welcome back!" : "Account created!"
@@ -463,6 +463,11 @@ class MCPGateway {
 - Comprehensive test coverage for billing flows
 - Environment variable documentation and setup (PR #46)
 - Token management UI (PR #49)
+- ESM module support with proper .js extensions (PR #56)
+- Production deployment with Cloudflare SSL (Full mode)
+- Docker multi-stage builds for optimized images
+- Consolidated API endpoints under api.relayforge.xyz
+- Health checks using Node.js instead of wget
 
 ### 🚧 In Progress (Phase 2)
 - Additional OAuth providers (GitHub, Slack)
