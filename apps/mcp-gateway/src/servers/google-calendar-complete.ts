@@ -24,7 +24,14 @@ const CreateEventSchema = z.object({
   attendees: z.array(z.string().email('Invalid email format')).optional(),
   location: z.string().optional(),
   timeZone: z.string().optional().default('UTC').refine((tz) => {
-    return moment.tz.zone(tz) !== null;
+    try {
+      // Check if timezone is valid
+      return tz === 'UTC' || moment.tz.zone(tz) !== null;
+    } catch (error) {
+      // If moment.tz.zone throws an error, just accept common timezones
+      const commonTimezones = ['UTC', 'America/New_York', 'America/Los_Angeles', 'America/Chicago', 'Europe/London', 'Asia/Tokyo'];
+      return commonTimezones.includes(tz);
+    }
   }, {
     message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
   }),
@@ -54,7 +61,14 @@ const UpdateEventSchema = z.object({
   location: z.string().optional(),
   timeZone: z.string().optional().refine((tz) => {
     if (!tz) return true; // Optional field
-    return moment.tz.zone(tz) !== null;
+    try {
+      // Check if timezone is valid
+      return tz === 'UTC' || moment.tz.zone(tz) !== null;
+    } catch (error) {
+      // If moment.tz.zone throws an error, just accept common timezones
+      const commonTimezones = ['UTC', 'America/New_York', 'America/Los_Angeles', 'America/Chicago', 'Europe/London', 'Asia/Tokyo'];
+      return commonTimezones.includes(tz);
+    }
   }, {
     message: 'Invalid timezone. Use a valid IANA timezone identifier (e.g., America/New_York)',
   }),
@@ -128,6 +142,45 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
       return this.getToolsList(id);
     }
 
+    // Handle tools/call request (MCP standard)
+    if (method === 'tools/call') {
+      const toolName = params?.name;
+      const toolParams = params?.arguments || {};
+      
+      // Ensure calendar is authenticated for tool calls
+      if (!this.calendar) {
+        return this.createErrorResponse(id, -32002, 'Google Calendar not authenticated');
+      }
+
+      try {
+        switch (toolName) {
+          case 'google-calendar_create-event':
+            return await this.createEvent(id, toolParams);
+          
+          case 'google-calendar_update-event':
+            return await this.updateEvent(id, toolParams);
+          
+          case 'google-calendar_delete-event':
+            return await this.deleteEvent(id, toolParams);
+          
+          case 'google-calendar_get-event':
+            return await this.getEvent(id, toolParams);
+          
+          case 'google-calendar_list-events':
+            return await this.listEvents(id, toolParams);
+          
+          case 'google-calendar_list-calendars':
+            return await this.listCalendars(id, toolParams);
+          
+          default:
+            return this.createErrorResponse(id, -32602, `Unknown tool: ${toolName}`);
+        }
+      } catch (error) {
+        return this.handleError(id, error);
+      }
+    }
+
+    // Handle direct method calls (backward compatibility)
     // Ensure calendar is authenticated
     if (!this.calendar) {
       return this.createErrorResponse(id, -32002, 'Google Calendar not authenticated');
@@ -135,22 +188,22 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
 
     try {
       switch (method) {
-        case 'google-calendar.create-event':
+        case 'google_calendar_create_event':
           return await this.createEvent(id, params);
         
-        case 'google-calendar.update-event':
+        case 'google_calendar_update_event':
           return await this.updateEvent(id, params);
         
-        case 'google-calendar.delete-event':
+        case 'google_calendar_delete_event':
           return await this.deleteEvent(id, params);
         
-        case 'google-calendar.get-event':
+        case 'google_calendar_get_event':
           return await this.getEvent(id, params);
         
-        case 'google-calendar.list-events':
+        case 'google_calendar_list_events':
           return await this.listEvents(id, params);
         
-        case 'google-calendar.list-calendars':
+        case 'google_calendar_list_calendars':
           return await this.listCalendars(id, params);
         
         default:
@@ -168,7 +221,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
       result: {
         tools: [
           {
-            name: 'google-calendar.create-event',
+            name: 'google-calendar_create-event',
             description: 'Create a new calendar event',
             inputSchema: {
               type: 'object',
@@ -215,7 +268,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             },
           },
           {
-            name: 'google-calendar.update-event',
+            name: 'google-calendar_update-event',
             description: 'Update an existing calendar event. Note: When updating only the timezone, the event time is preserved (the absolute moment stays the same, but is displayed in the new timezone).',
             inputSchema: {
               type: 'object',
@@ -266,7 +319,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             },
           },
           {
-            name: 'google-calendar.delete-event',
+            name: 'google-calendar_delete-event',
             description: 'Delete a calendar event',
             inputSchema: {
               type: 'object',
@@ -288,7 +341,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             },
           },
           {
-            name: 'google-calendar.get-event',
+            name: 'google-calendar_get-event',
             description: 'Get details of a specific calendar event',
             inputSchema: {
               type: 'object',
@@ -306,7 +359,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             },
           },
           {
-            name: 'google-calendar.list-events',
+            name: 'google-calendar_list-events',
             description: 'List calendar events',
             inputSchema: {
               type: 'object',
@@ -339,7 +392,7 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
             },
           },
           {
-            name: 'google-calendar.list-calendars',
+            name: 'google-calendar_list-calendars',
             description: 'List all calendars accessible to the user',
             inputSchema: {
               type: 'object',

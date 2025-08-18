@@ -67,7 +67,7 @@ describe('Timezone Conversion in Google Calendar', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           timeZone: 'Asia/Tokyo', // Only updating timezone
@@ -122,7 +122,7 @@ describe('Timezone Conversion in Google Calendar', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           startTime: '2024-01-15T14:00:00Z', // Explicitly setting new time
@@ -169,7 +169,7 @@ describe('Timezone Conversion in Google Calendar', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           timeZone: 'America/Los_Angeles', // PST/PDT
@@ -215,7 +215,7 @@ describe('Timezone Conversion in Google Calendar', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           timeZone: 'Asia/Tokyo',

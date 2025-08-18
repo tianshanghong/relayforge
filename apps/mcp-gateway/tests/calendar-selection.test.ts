@@ -41,7 +41,7 @@ describe('Calendar Selection Feature', () => {
     server.setAccessToken('test-token');
   });
 
-  describe('google-calendar.list-calendars', () => {
+  describe('google_calendar_list_calendars', () => {
     it('should list all accessible calendars', async () => {
       const mockCalendars = [
         {
@@ -87,7 +87,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-calendars',
+        method: 'google_calendar_list_calendars',
         params: {},
       };
 
@@ -112,7 +112,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-calendars',
+        method: 'google_calendar_list_calendars',
         params: {
           showHidden: true,
         },
@@ -134,7 +134,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-calendars',
+        method: 'google_calendar_list_calendars',
         params: {
           minAccessRole: 'writer',
         },
@@ -156,7 +156,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-calendars',
+        method: 'google_calendar_list_calendars',
         params: {},
       };
 
@@ -176,7 +176,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           calendarId: 'work@company.com',
           summary: 'Work Meeting',
@@ -202,7 +202,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           summary: 'Personal Event',
           startTime: '2024-01-15T10:00:00Z',
@@ -233,7 +233,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           calendarId: 'shared@team.com',
@@ -257,7 +257,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.delete-event',
+        method: 'google_calendar_delete_event',
         params: {
           eventId: 'event-123',
           calendarId: 'work@company.com',
@@ -290,7 +290,7 @@ describe('Calendar Selection Feature', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           calendarId: 'nonexistent@calendar.com',
           summary: 'Test Event',

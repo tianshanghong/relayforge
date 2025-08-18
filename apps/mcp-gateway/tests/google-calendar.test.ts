@@ -48,12 +48,12 @@ describe('GoogleCalendarCompleteServer', () => {
 
       expect(response.result.tools).toHaveLength(6);
       expect(response.result.tools.map((t: any) => t.name)).toEqual([
-        'google-calendar.create-event',
-        'google-calendar.update-event',
-        'google-calendar.delete-event',
-        'google-calendar.get-event',
-        'google-calendar.list-events',
-        'google-calendar.list-calendars',
+        'google_calendar_create_event',
+        'google_calendar_update_event',
+        'google_calendar_delete_event',
+        'google_calendar_get_event',
+        'google_calendar_list_events',
+        'google_calendar_list_calendars',
       ]);
     });
   });
@@ -63,7 +63,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-events',
+        method: 'google_calendar_list_events',
         params: {},
       };
 
@@ -85,7 +85,7 @@ describe('GoogleCalendarCompleteServer', () => {
     });
   });
 
-  describe('google-calendar.create-event', () => {
+  describe('google_calendar_create_event', () => {
     beforeEach(() => {
       server.setAccessToken('test-token');
     });
@@ -103,7 +103,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           summary: 'Test Meeting',
           description: 'Test description',
@@ -138,7 +138,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           description: 'Missing required fields',
         },
@@ -155,7 +155,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           summary: 'Test Meeting',
           startTime: 'invalid-date',
@@ -171,7 +171,7 @@ describe('GoogleCalendarCompleteServer', () => {
     });
   });
 
-  describe('google-calendar.update-event', () => {
+  describe('google_calendar_update_event', () => {
     beforeEach(() => {
       server.setAccessToken('test-token');
     });
@@ -196,7 +196,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           summary: 'Updated Meeting',
@@ -231,7 +231,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'event-123',
           summary: 'Updated Meeting',
@@ -262,7 +262,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.update-event',
+        method: 'google_calendar_update_event',
         params: {
           eventId: 'non-existent',
           summary: 'Updated Meeting',
@@ -277,7 +277,7 @@ describe('GoogleCalendarCompleteServer', () => {
     });
   });
 
-  describe('google-calendar.delete-event', () => {
+  describe('google_calendar_delete_event', () => {
     beforeEach(() => {
       server.setAccessToken('test-token');
     });
@@ -288,7 +288,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.delete-event',
+        method: 'google_calendar_delete_event',
         params: {
           eventId: 'event-123',
           sendNotifications: false,
@@ -307,7 +307,7 @@ describe('GoogleCalendarCompleteServer', () => {
     });
   });
 
-  describe('google-calendar.get-event', () => {
+  describe('google_calendar_get_event', () => {
     beforeEach(() => {
       server.setAccessToken('test-token');
     });
@@ -328,7 +328,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.get-event',
+        method: 'google_calendar_get_event',
         params: {
           eventId: 'event-123',
         },
@@ -343,7 +343,7 @@ describe('GoogleCalendarCompleteServer', () => {
     });
   });
 
-  describe('google-calendar.list-events', () => {
+  describe('google_calendar_list_events', () => {
     beforeEach(() => {
       server.setAccessToken('test-token');
     });
@@ -371,7 +371,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-events',
+        method: 'google_calendar_list_events',
         params: {
           maxResults: 10,
           timeMin: '2024-01-15T00:00:00Z',
@@ -403,7 +403,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-events',
+        method: 'google_calendar_list_events',
         params: {},
       };
 
@@ -435,7 +435,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.create-event',
+        method: 'google_calendar_create_event',
         params: {
           summary: 'Test Meeting',
           startTime: '2024-01-15T10:00:00Z',
@@ -458,7 +458,7 @@ describe('GoogleCalendarCompleteServer', () => {
       const request = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'google-calendar.list-events',
+        method: 'google_calendar_list_events',
         params: {},
       };
 

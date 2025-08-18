@@ -147,7 +147,7 @@ describe('Billing Flow Integration Tests', () => {
         'google-calendar',
         2,
         true,
-        'google-calendar.list-calendars'
+        'google_calendar_list_calendars'
       );
 
       expect(prisma.usage.create).toHaveBeenCalledWith({
@@ -155,7 +155,7 @@ describe('Billing Flow Integration Tests', () => {
           tokenId: mockAuthInfo.tokenId,
           userId: mockAuthInfo.userId,
           service: 'google-calendar',
-          method: 'google-calendar.list-calendars',
+          method: 'google_calendar_list_calendars',
           credits: 2,
           success: true,
         },
@@ -209,7 +209,7 @@ describe('Billing Flow Integration Tests', () => {
         'google-calendar',
         2,
         true,
-        'google-calendar.list-events'
+        'google_calendar_list_events'
       );
 
       expect(prisma.usage.create).toHaveBeenCalledWith({
@@ -217,7 +217,7 @@ describe('Billing Flow Integration Tests', () => {
           tokenId: mockAuthInfo.tokenId,
           userId: mockAuthInfo.userId,
           service: 'google-calendar',
-          method: 'google-calendar.list-events',
+          method: 'google_calendar_list_events',
           credits: 2,
           success: true,
         },
@@ -235,7 +235,7 @@ describe('Billing Flow Integration Tests', () => {
         'google-calendar',
         0,
         false,
-        'google-calendar.create-event'
+        'google_calendar_create_event'
       );
 
       expect(prisma.usage.create).toHaveBeenCalledWith({
@@ -243,7 +243,7 @@ describe('Billing Flow Integration Tests', () => {
           tokenId: mockAuthInfo.tokenId,
           userId: mockAuthInfo.userId,
           service: 'google-calendar',
-          method: 'google-calendar.create-event',
+          method: 'google_calendar_create_event',
           credits: 0,
           success: false,
         },
@@ -252,10 +252,10 @@ describe('Billing Flow Integration Tests', () => {
 
     it('should include method name in WebSocket usage tracking', async () => {
       const methods = [
-        'google-calendar.list-calendars',
-        'google-calendar.create-event',
-        'google-calendar.update-event',
-        'google-calendar.delete-event',
+        'google_calendar_list_calendars',
+        'google_calendar_create_event',
+        'google_calendar_update_event',
+        'google_calendar_delete_event',
       ];
 
       for (const method of methods) {
@@ -287,9 +287,9 @@ describe('Billing Flow Integration Tests', () => {
       mockUserService.deductCredits.mockResolvedValue(true);
 
       const requests = [
-        { method: 'google-calendar.list-calendars', success: true },
-        { method: 'google-calendar.create-event', success: true },
-        { method: 'google-calendar.list-events', success: false }, // Simulate failure
+        { method: 'google_calendar_list_calendars', success: true },
+        { method: 'google_calendar_create_event', success: true },
+        { method: 'google_calendar_list_events', success: false }, // Simulate failure
       ];
 
       for (const request of requests) {
@@ -357,7 +357,7 @@ describe('Billing Flow Integration Tests', () => {
           'google-calendar',
           2,
           true,
-          'google-calendar.list-calendars'
+          'google_calendar_list_calendars'
         )
       ).resolves.not.toThrow();
     });
@@ -390,7 +390,7 @@ describe('Billing Flow Integration Tests', () => {
         'google-calendar',
         2,
         true,
-        'google-calendar.list-calendars'
+        'google_calendar_list_calendars'
       );
 
       // Should log error

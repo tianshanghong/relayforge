@@ -51,7 +51,7 @@ export class HelloWorldMCPServer {
   private getTools(): Tool[] {
     return [
       {
-        name: "hello_world.say_hello",
+        name: "hello-world_say-hello",
         description: "Says hello to a person",
         inputSchema: {
           type: "object",
@@ -70,7 +70,7 @@ export class HelloWorldMCPServer {
   private async handleToolCall(params: any, id: string | number): Promise<MCPResponse> {
     const { name: toolName, arguments: args } = params;
 
-    if (toolName === "say_hello") {
+    if (toolName === "hello-world_say-hello") {
       const name = args?.name || "World";
       return {
         jsonrpc: "2.0",

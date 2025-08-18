@@ -155,8 +155,8 @@ describe('Service Discovery API', () => {
             handleHttpRequest: vi.fn().mockResolvedValue({
               result: {
                 tools: [
-                  { name: 'google-calendar.create-event' },
-                  { name: 'google-calendar.list-events' },
+                  { name: 'google_calendar_create_event' },
+                  { name: 'google_calendar_list_events' },
                 ],
               },
             }),
@@ -241,7 +241,7 @@ describe('Service Discovery API', () => {
         expect(body.services[0]).toMatchObject({
           id: 'google-calendar',
           name: 'Google Calendar',
-          methods: ['google-calendar.create-event', 'google-calendar.list-events'],
+          methods: ['google_calendar_create_event', 'google_calendar_list_events'],
           auth: 'oauth',
           connected: false,
           price_per_call: 0.02,

@@ -85,7 +85,7 @@ describe('WebSocket Billing Integration', () => {
       const message = {
         jsonrpc: '2.0',
         id: '2',
-        method: 'google-calendar.list-calendars',
+        method: 'google_calendar_list_calendars',
         params: {},
       };
 
@@ -115,7 +115,7 @@ describe('WebSocket Billing Integration', () => {
           tokenId: mockAuthInfo.tokenId,
           userId: mockAuthInfo.userId,
           service: 'google-calendar',
-          method: 'google-calendar.list-calendars',
+          method: 'google_calendar_list_calendars',
           credits: 2,
           success: true,
         },
@@ -227,7 +227,7 @@ describe('WebSocket Billing Integration', () => {
         'google-calendar',
         2,
         false,
-        'google-calendar.create-event'
+        'google_calendar_create_event'
       );
 
       expect(prisma.usage.create).toHaveBeenCalledWith({
@@ -235,7 +235,7 @@ describe('WebSocket Billing Integration', () => {
           tokenId: mockAuthInfo.tokenId,
           userId: mockAuthInfo.userId,
           service: 'google-calendar',
-          method: 'google-calendar.create-event',
+          method: 'google_calendar_create_event',
           credits: 2,
           success: false,
         },
@@ -248,9 +248,9 @@ describe('WebSocket Billing Integration', () => {
       mockUserService.deductCredits.mockResolvedValue(true);
 
       const methods = [
-        'google-calendar.list-calendars',
-        'google-calendar.list-events',
-        'google-calendar.get-event',
+        'google_calendar_list_calendars',
+        'google_calendar_list_events',
+        'google_calendar_get_event',
       ];
 
       // Simulate rapid requests

@@ -36,7 +36,7 @@ serviceRouter.registerService({
 // Register hello-world for testing
 serviceRouter.registerService({
   name: 'Hello World',
-  prefix: 'hello_world',
+  prefix: 'hello-world',
   requiresAuth: false,
   adapter: new MCPHttpAdapter(new HelloWorldMCPServer()),
 });
@@ -56,7 +56,46 @@ async function handleMCPRequest(
   request: any,
   reply: any
 ) {
-  const method = mcpRequest.method;
+  let method = mcpRequest.method;
+  
+  // Handle initialize request
+  if (method === 'initialize') {
+    reply.send({
+      jsonrpc: '2.0',
+      id: mcpRequest.id,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: {},
+          resources: {}
+        },
+        serverInfo: {
+          name: 'RelayForge MCP Gateway',
+          version: '1.0.0'
+        }
+      }
+    });
+    return;
+  }
+  
+  // Handle notifications/initialized (sent after initialize)
+  if (method === 'notifications/initialized') {
+    // This is a notification, no response needed
+    reply.code(200).send({
+      jsonrpc: '2.0',
+      result: {}
+    });
+    return;
+  }
+  
+  // Special handling for tools/call - extract service from tool name
+  if (method === 'tools/call' && mcpRequest.params?.name) {
+    const toolName = mcpRequest.params.name;
+    // Extract service name from tool name (e.g., google-calendar_list-events -> google-calendar)
+    const serviceName = toolName.split('_')[0];
+    // Rewrite method to include service prefix for routing
+    method = `${serviceName}.tools/call`;
+  }
   
   // Special handling for system methods
   if (method === 'tools/list') {
@@ -242,7 +281,42 @@ fastify.register(async function (fastify) {
     socket.on('message', async (message: Buffer) => {
       try {
         const mcpRequest = JSON.parse(message.toString());
-        const method = mcpRequest.method;
+        let method = mcpRequest.method;
+        
+        // Handle initialize request
+        if (method === 'initialize') {
+          socket.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: mcpRequest.id,
+            result: {
+              protocolVersion: '2024-11-05',
+              capabilities: {
+                tools: {},
+                resources: {}
+              },
+              serverInfo: {
+                name: 'RelayForge MCP Gateway',
+                version: '1.0.0'
+              }
+            }
+          }));
+          return;
+        }
+        
+        // Handle notifications/initialized (sent after initialize)
+        if (method === 'notifications/initialized') {
+          // This is a notification, typically no response needed for WebSocket
+          return;
+        }
+        
+        // Special handling for tools/call - extract service from tool name
+        if (method === 'tools/call' && mcpRequest.params?.name) {
+          const toolName = mcpRequest.params.name;
+          // Extract service name from tool name (e.g., google-calendar_list-events -> google-calendar)
+          const serviceName = toolName.split('_')[0];
+          // Rewrite method to include service prefix for routing
+          method = `${serviceName}.tools/call`;
+        }
         
         // Special handling for system methods
         if (method === 'tools/list') {
