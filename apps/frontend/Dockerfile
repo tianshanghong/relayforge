@@ -24,8 +24,10 @@ COPY packages/shared ./packages/shared
 COPY apps/frontend ./apps/frontend
 
 # Layer 5: Set environment variables for build
-ENV NODE_ENV=production
-ENV VITE_OAUTH_SERVICE_URL=https://api.relayforge.xyz
+ARG NODE_ENV=production
+ARG VITE_OAUTH_SERVICE_URL=https://api.relayforge.xyz
+ENV NODE_ENV=${NODE_ENV}
+ENV VITE_OAUTH_SERVICE_URL=${VITE_OAUTH_SERVICE_URL}
 
 # Layer 6: Build everything in parallel using turbo
 RUN pnpm turbo run build --filter=relayforge-frontend...

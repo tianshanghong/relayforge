@@ -86,16 +86,30 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        NODE_ENV: development
+        VITE_OAUTH_SERVICE_URL: http://localhost:8080
     container_name: relayforge-frontend-dev
     restart: unless-stopped
     ports:
       - "5173:80"
-    environment:
-      VITE_API_URL: http://localhost:3002
-      VITE_GATEWAY_URL: http://localhost:3001
     volumes:
       - ./apps/frontend/src:/app/apps/frontend/src
       - ./apps/frontend/public:/app/apps/frontend/public
+
+  # Nginx (for local testing with proper routing)
+  nginx:
+    image: nginx:stable
+    container_name: relayforge-nginx-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - oauth-service
+      - mcp-gateway
 
 volumes:
   postgres_dev_data:
