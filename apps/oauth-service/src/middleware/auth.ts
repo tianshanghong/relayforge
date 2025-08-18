@@ -35,7 +35,7 @@ export async function authenticateUser(
 
   try {
     // Import here to avoid circular dependency
-    const { SessionService } = await import('../services');
+    const { SessionService } = await import('../services/index.js');
     const sessionService = new SessionService();
     
     const sessionInfo = await sessionService.validateSession(sessionId);
