@@ -51,7 +51,7 @@ export class HelloWorldMCPServer {
   private getTools(): Tool[] {
     return [
       {
-        name: "say_hello",
+        name: "hello_world.say_hello",
         description: "Says hello to a person",
         inputSchema: {
           type: "object",

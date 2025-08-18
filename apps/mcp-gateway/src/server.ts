@@ -144,8 +144,20 @@ async function handleMCPRequest(
       googleCalendarServer.setAccessToken(accessToken);
     }
     
+    // Strip service prefix for standard MCP methods
+    const processedRequest = { ...mcpRequest };
+    const methodParts = method.split('.');
+    if (methodParts.length > 1) {
+      const methodWithoutPrefix = methodParts.slice(1).join('.');
+      // Check if this is a standard MCP method
+      const standardMcpMethods = ['initialize', 'tools/list', 'tools/call', 'resources/list', 'resources/read'];
+      if (standardMcpMethods.includes(methodWithoutPrefix)) {
+        processedRequest.method = methodWithoutPrefix;
+      }
+    }
+    
     // Handle the request
-    const response = await service.adapter.handleHttpRequest(authInfo.tokenId, mcpRequest);
+    const response = await service.adapter.handleHttpRequest(authInfo.tokenId, processedRequest);
     
     if (response) {
       success = !response.error;
@@ -318,9 +330,21 @@ fastify.register(async function (fastify) {
             googleCalendarServer.setAccessToken(accessToken);
           }
           
+          // Strip service prefix for standard MCP methods
+          const messageObj = JSON.parse(message.toString());
+          const methodParts = method.split('.');
+          if (methodParts.length > 1) {
+            const methodWithoutPrefix = methodParts.slice(1).join('.');
+            // Check if this is a standard MCP method
+            const standardMcpMethods = ['initialize', 'tools/list', 'tools/call', 'resources/list', 'resources/read'];
+            if (standardMcpMethods.includes(methodWithoutPrefix)) {
+              messageObj.method = methodWithoutPrefix;
+            }
+          }
+          
           const response = await service.adapter.handleWebSocketMessage(
             authInfo.tokenId,
-            message.toString()
+            JSON.stringify(messageObj)
           );
           
           if (response) {

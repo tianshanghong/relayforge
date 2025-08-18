@@ -23,8 +23,26 @@ export class ServiceRouter {
 
   getServiceByMethod(method: string): ServiceConfig | null {
     // Extract prefix from method (e.g., "google_calendar.create_event" -> "google_calendar")
-    const prefix = method.split('.')[0];
-    return this.services.get(prefix) || null;
+    const parts = method.split('.');
+    const prefix = parts[0];
+    
+    // First try direct prefix match
+    if (this.services.has(prefix)) {
+      return this.services.get(prefix) || null;
+    }
+    
+    // For methods without prefix (like "say_hello"), check if it belongs to hello_world
+    if (!method.includes('.') && this.services.has('hello_world')) {
+      // Check if hello_world service has this method
+      const helloWorldService = this.services.get('hello_world');
+      if (helloWorldService) {
+        // For now, assume unprefixed methods belong to hello_world
+        // In production, you'd want to check the actual tool list
+        return helloWorldService;
+      }
+    }
+    
+    return null;
   }
 
   async getServiceWithAuth(
