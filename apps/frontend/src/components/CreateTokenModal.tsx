@@ -13,6 +13,7 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [newTokenInfo, setNewTokenInfo] = useState<McpToken | null>(null);
   const [copied, setCopied] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -34,7 +35,9 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
       setError(null);
       const response = await tokenApi.createToken(name.trim());
       setNewToken(response.token.plainToken || null);
-      onTokenCreated({
+      // Store the token info but DON'T call onTokenCreated yet
+      // We'll call it when the user clicks "Done"
+      setNewTokenInfo({
         id: response.token.id,
         name: response.token.name,
         prefix: response.token.prefix,
@@ -192,7 +195,13 @@ export function CreateTokenModal({ onClose, onTokenCreated }: CreateTokenModalPr
 
             <div className="flex justify-end">
               <button
-                onClick={onClose}
+                onClick={() => {
+                  // Add the new token to the list before closing
+                  if (newTokenInfo) {
+                    onTokenCreated(newTokenInfo);
+                  }
+                  onClose();
+                }}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 Done
