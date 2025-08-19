@@ -34,7 +34,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: { maxResults: 100 },
         id: 1,
       });
@@ -61,7 +61,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: { maxResults: 10 },
         id: 1,
       });
@@ -80,7 +80,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       vi.spyOn(mockEvents, 'insert').mockRejectedValue(timeoutError);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_create_event',
+        method: 'google-calendar_create-event',
         params: {
           summary: 'Test Event',
           startTime: '2024-01-15T10:00:00Z',
@@ -109,7 +109,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       vi.spyOn(mockEvents, 'insert').mockImplementation(() => slowPromise as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_create_event',
+        method: 'google-calendar_create-event',
         params: {
           summary: 'Test Event',
           startTime: '2024-01-15T10:00:00Z',
@@ -134,7 +134,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_get_event',
+        method: 'google-calendar_get-event',
         params: { eventId: 'non-existent' },
         id: 1,
       });
@@ -153,7 +153,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: {},
         id: 1,
       });
@@ -177,7 +177,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: {},
         id: 1,
       });
@@ -214,7 +214,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       await server.handleRequest({
-        method: 'google_calendar_update_event',
+        method: 'google-calendar_update-event',
         params: {
           eventId: 'event-123',
           timeZone: 'UTC',
@@ -249,7 +249,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_calendars',
+        method: 'google-calendar_list-calendars',
         params: {},
         id: 1,
       });
@@ -271,7 +271,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       vi.spyOn(mockEvents, 'list').mockRejectedValue(authError);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: {},
         id: 1,
       });
@@ -285,7 +285,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       // Don't set access token
 
       const response = await unauthServer.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: {},
         id: 1,
       });
@@ -308,7 +308,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_create_event',
+        method: 'google-calendar_create-event',
         params: {
           summary: longSummary,
           startTime: '2024-01-15T10:00:00Z',
@@ -335,7 +335,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       } as any);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_create_event',
+        method: 'google-calendar_create-event',
         params: {
           summary: 'New Year Event',
           startTime: '2023-12-31T23:00:00Z',
@@ -350,7 +350,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
 
     it('should reject events with start time after end time', async () => {
       const response = await server.handleRequest({
-        method: 'google_calendar_create_event',
+        method: 'google-calendar_create-event',
         params: {
           summary: 'Invalid Event',
           startTime: '2024-01-15T15:00:00Z',
@@ -376,7 +376,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
       vi.spyOn(mockEvents, 'list').mockRejectedValue(notFoundError);
 
       const response = await server.handleRequest({
-        method: 'google_calendar_list_events',
+        method: 'google-calendar_list-events',
         params: { calendarId: 'non-existent-calendar' },
         id: 1,
       });
@@ -401,7 +401,7 @@ describe('GoogleCalendarCompleteServer - Edge Cases', () => {
 
       const requests = Array.from({ length: 5 }, (_, i) => 
         server.handleRequest({
-          method: 'google_calendar_create_event',
+          method: 'google-calendar_create-event',
           params: {
             summary: `Event ${i}`,
             startTime: '2024-01-15T10:00:00Z',

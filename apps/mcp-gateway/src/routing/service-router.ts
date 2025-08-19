@@ -22,8 +22,9 @@ export class ServiceRouter {
   }
 
   getServiceByMethod(method: string): ServiceConfig | null {
-    // Extract prefix from method (e.g., "google_calendar.create_event" -> "google_calendar")
-    const parts = method.split('.');
+    // Extract prefix from method using underscore separator
+    // Claude Code format: "google-calendar_create-event" -> "google-calendar"
+    const parts = method.split('_');
     const prefix = parts[0];
     
     // First try direct prefix match
@@ -31,14 +32,12 @@ export class ServiceRouter {
       return this.services.get(prefix) || null;
     }
     
-    // For methods without prefix (like "say_hello"), check if it belongs to hello_world
-    if (!method.includes('.') && this.services.has('hello_world')) {
-      // Check if hello_world service has this method
-      const helloWorldService = this.services.get('hello_world');
-      if (helloWorldService) {
-        // For now, assume unprefixed methods belong to hello_world
-        // In production, you'd want to check the actual tool list
-        return helloWorldService;
+    // For methods without underscore (like standalone "say-hello"), check registered services
+    if (!method.includes('_')) {
+      // Check each registered service to see if it might handle this method
+      // For now, check hello-world service
+      if (this.services.has('hello-world')) {
+        return this.services.get('hello-world') || null;
       }
     }
     
@@ -51,7 +50,7 @@ export class ServiceRouter {
   ): Promise<{ service: ServiceConfig; accessToken?: string }> {
     const service = this.getServiceByMethod(method);
     if (!service) {
-      throw new ServiceNotFoundError(method.split('.')[0]);
+      throw new ServiceNotFoundError(method.split('_')[0]);
     }
 
     if (!service.requiresAuth) {

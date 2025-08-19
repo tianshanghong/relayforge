@@ -48,7 +48,7 @@ describe('Token Refresh in Gateway', () => {
     mockOAuthService.getValidToken.mockResolvedValue(freshAccessToken);
 
     // Call getServiceWithAuth
-    const result = await serviceRouter.getServiceWithAuth('google_calendar_create_event', userId);
+    const result = await serviceRouter.getServiceWithAuth('google-calendar_create-event', userId);
 
     // Verify getValidToken was called (not getToken)
     expect(mockOAuthService.getValidToken).toHaveBeenCalledWith(userId, 'google');
@@ -66,7 +66,7 @@ describe('Token Refresh in Gateway', () => {
 
     // Call should throw an OAuthTokenError
     await expect(
-      serviceRouter.getServiceWithAuth('google_calendar_create_event', userId)
+      serviceRouter.getServiceWithAuth('google-calendar_create-event', userId)
     ).rejects.toThrow('Failed to obtain OAuth token for google');
   });
 
@@ -81,11 +81,11 @@ describe('Token Refresh in Gateway', () => {
       .mockResolvedValueOnce('refreshed-token-1');
 
     // First request - token was expired, got refreshed
-    const result1 = await serviceRouter.getServiceWithAuth('google_calendar_list_events', userId);
+    const result1 = await serviceRouter.getServiceWithAuth('google-calendar_list-events', userId);
     expect(result1.accessToken).toBe('refreshed-token-1');
 
     // Second request - token still valid, no refresh needed
-    const result2 = await serviceRouter.getServiceWithAuth('google_calendar_list_events', userId);
+    const result2 = await serviceRouter.getServiceWithAuth('google-calendar_list-events', userId);
     expect(result2.accessToken).toBe('refreshed-token-1');
 
     // getValidToken was called twice

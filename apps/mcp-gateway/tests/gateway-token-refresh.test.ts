@@ -51,7 +51,7 @@ describe('Gateway Token Refresh Integration', () => {
 
       // Get service with auth
       const result = await serviceRouter.getServiceWithAuth(
-        'google-calendar.create_event',
+        'google-calendar_create-event',
         userId
       );
 
@@ -74,12 +74,12 @@ describe('Gateway Token Refresh Integration', () => {
 
       // Get service with auth - should throw OAuthTokenError
       await expect(
-        serviceRouter.getServiceWithAuth('google-calendar.list_events', userId)
+        serviceRouter.getServiceWithAuth('google-calendar_list-events', userId)
       ).rejects.toThrow('Failed to obtain OAuth token for google: Token refresh failed');
 
       // Verify the error has proper context
       try {
-        await serviceRouter.getServiceWithAuth('google-calendar.list_events', userId);
+        await serviceRouter.getServiceWithAuth('google-calendar_list-events', userId);
       } catch (error: any) {
         expect(error.name).toBe('OAuthTokenError');
         expect(error.code).toBe('OAUTH_TOKEN_ERROR');
@@ -105,7 +105,7 @@ describe('Gateway Token Refresh Integration', () => {
 
       // Get service without auth
       const result = await serviceRouter.getServiceWithAuth(
-        'public-api.get_data',
+        'public-api_get-data',
         'any-user-id'
       );
 
@@ -137,7 +137,7 @@ describe('Gateway Token Refresh Integration', () => {
       });
 
       await expect(
-        serviceRouter.getServiceWithAuth('unmapped-service.method', 'user-id')
+        serviceRouter.getServiceWithAuth('unmapped-service_method', 'user-id')
       ).rejects.toThrow('No OAuth provider mapped for service: unmapped-service');
     });
   });

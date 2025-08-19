@@ -188,22 +188,22 @@ export class GoogleCalendarCompleteServer implements MCPServerHandler {
 
     try {
       switch (method) {
-        case 'google_calendar_create_event':
+        case 'google-calendar_create-event':
           return await this.createEvent(id, params);
         
-        case 'google_calendar_update_event':
+        case 'google-calendar_update-event':
           return await this.updateEvent(id, params);
         
-        case 'google_calendar_delete_event':
+        case 'google-calendar_delete-event':
           return await this.deleteEvent(id, params);
         
-        case 'google_calendar_get_event':
+        case 'google-calendar_get-event':
           return await this.getEvent(id, params);
         
-        case 'google_calendar_list_events':
+        case 'google-calendar_list-events':
           return await this.listEvents(id, params);
         
-        case 'google_calendar_list_calendars':
+        case 'google-calendar_list-calendars':
           return await this.listCalendars(id, params);
         
         default:
