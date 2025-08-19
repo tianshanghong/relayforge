@@ -27,18 +27,15 @@ export class ServiceRouter {
     const parts = method.split('_');
     const prefix = parts[0];
     
-    // First try direct prefix match
+    // Try direct prefix match
     if (this.services.has(prefix)) {
       return this.services.get(prefix) || null;
     }
     
-    // For methods without underscore (like standalone "say-hello"), check registered services
-    if (!method.includes('_')) {
-      // Check each registered service to see if it might handle this method
-      // For now, check hello-world service
-      if (this.services.has('hello-world')) {
-        return this.services.get('hello-world') || null;
-      }
+    // Special case: if method is exactly a tool name from hello-world (like "say-hello")
+    // Only route to hello-world if it's specifically a hello-world method
+    if (method === 'say-hello' && this.services.has('hello-world')) {
+      return this.services.get('hello-world') || null;
     }
     
     return null;

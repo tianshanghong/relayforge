@@ -93,8 +93,8 @@ async function handleMCPRequest(
     const toolName = mcpRequest.params.name;
     // Extract service name from tool name (e.g., google-calendar_list-events -> google-calendar)
     const serviceName = toolName.split('_')[0];
-    // Rewrite method to include service prefix for routing
-    method = `${serviceName}.tools/call`;
+    // Rewrite method to include service prefix for routing (using underscore separator)
+    method = `${serviceName}_tools/call`;
   }
   
   // Special handling for system methods
@@ -314,8 +314,8 @@ fastify.register(async function (fastify) {
           const toolName = mcpRequest.params.name;
           // Extract service name from tool name (e.g., google-calendar_list-events -> google-calendar)
           const serviceName = toolName.split('_')[0];
-          // Rewrite method to include service prefix for routing
-          method = `${serviceName}.tools/call`;
+          // Rewrite method to include service prefix for routing (using underscore separator)
+          method = `${serviceName}_tools/call`;
         }
         
         // Special handling for system methods
