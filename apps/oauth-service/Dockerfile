@@ -30,8 +30,8 @@ RUN pnpm turbo run build --filter=@relayforge/oauth-service...
 # Production stage
 FROM node:20-slim
 
-# Install dumb-init and openssl (required for Prisma)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
+# Install dumb-init, openssl (required for Prisma), and wget (for health checks)
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl wget && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
