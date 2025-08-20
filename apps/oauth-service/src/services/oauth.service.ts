@@ -142,7 +142,7 @@ export class OAuthFlowService {
     }
 
     // Build MCP URL
-    const mcpUrl = `${process.env.MCP_BASE_URL || 'https://relayforge.com'}/mcp/u/${result.user.slug}`;
+    const mcpUrl = `${process.env.MCP_BASE_URL || 'https://api.relayforge.xyz'}/mcp/u/${result.user.slug}`;
 
     return {
       mcpUrl,

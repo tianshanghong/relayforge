@@ -218,7 +218,7 @@ export class SessionService {
    * Generate MCP URL for a session
    */
   private generateMcpUrl(sessionId: string): string {
-    const baseUrl = process.env.MCP_BASE_URL || 'https://relayforge.com';
+    const baseUrl = process.env.MCP_BASE_URL || 'https://api.relayforge.xyz';
     return `${baseUrl}/mcp/${sessionId}`;
   }
 
