@@ -96,7 +96,7 @@ export class UniversalAdapter implements MCPServerHandler {
         }
         break;
         
-      case 'api-key':
+      case 'api-key': {
         const apiKey = process.env[this.definition.env_var!];
         if (!apiKey) {
           throw new Error(`API key not found in ${this.definition.env_var}`);
@@ -105,6 +105,7 @@ export class UniversalAdapter implements MCPServerHandler {
           this.service.setApiKey(apiKey);
         }
         break;
+      }
         
       case 'none':
         // No auth needed
