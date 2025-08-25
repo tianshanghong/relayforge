@@ -1,27 +1,33 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ServiceRouter } from '../src/routing/service-router';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
-import { oauthFlowService } from '@relayforge/oauth-service/services';
+import { OAuthClient } from '../src/clients/oauth-client';
 import { 
   ServiceNotFoundError, 
   OAuthTokenError, 
   ProviderNotMappedError 
 } from '../src/errors/gateway-errors';
 
-// Mock the oauth service
-vi.mock('@relayforge/oauth-service/services', () => ({
-  oauthFlowService: {
-    getValidToken: vi.fn(),
-  },
-}));
+// Mock the OAuth client
+vi.mock('../src/clients/oauth-client');
 
 describe('Gateway Token Refresh Integration', () => {
   let serviceRouter: ServiceRouter;
   let mockAdapter: MCPHttpAdapter;
+  let mockOAuthClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     serviceRouter = new ServiceRouter();
+    
+    // Create mock OAuth client
+    mockOAuthClient = {
+      getToken: vi.fn(),
+      healthCheck: vi.fn(),
+    };
+    
+    // Set the mock OAuth client
+    serviceRouter.setOAuthClient(mockOAuthClient as OAuthClient);
     
     // Create a mock adapter
     mockAdapter = {
@@ -46,8 +52,8 @@ describe('Gateway Token Refresh Integration', () => {
       const userId = 'test-user-id';
       const mockAccessToken = 'refreshed-access-token';
 
-      // Mock getValidToken to return a token
-      vi.mocked(oauthFlowService.getValidToken).mockResolvedValue(mockAccessToken);
+      // Mock OAuth client getToken to return a token
+      mockOAuthClient.getToken.mockResolvedValue(mockAccessToken);
 
       // Get service with auth
       const result = await serviceRouter.getServiceWithAuth(
@@ -55,8 +61,8 @@ describe('Gateway Token Refresh Integration', () => {
         userId
       );
 
-      // Verify getValidToken was called with correct parameters
-      expect(oauthFlowService.getValidToken).toHaveBeenCalledWith(userId, 'google');
+      // Verify OAuth client getToken was called with correct parameters
+      expect(mockOAuthClient.getToken).toHaveBeenCalledWith(userId, 'google');
       
       // Verify the result
       expect(result).not.toBeNull();
@@ -67,8 +73,8 @@ describe('Gateway Token Refresh Integration', () => {
     it('should handle token refresh errors with proper error type', async () => {
       const userId = 'test-user-id';
 
-      // Mock getValidToken to throw an error
-      vi.mocked(oauthFlowService.getValidToken).mockRejectedValue(
+      // Mock OAuth client getToken to throw an error
+      mockOAuthClient.getToken.mockRejectedValue(
         new Error('Token refresh failed')
       );
 
@@ -109,8 +115,8 @@ describe('Gateway Token Refresh Integration', () => {
         'any-user-id'
       );
 
-      // Should not call getValidToken
-      expect(oauthFlowService.getValidToken).not.toHaveBeenCalled();
+      // Should not call getToken
+      expect(mockOAuthClient.getToken).not.toHaveBeenCalled();
       
       // Should return service without access token
       expect(result).not.toBeNull();
@@ -124,7 +130,7 @@ describe('Gateway Token Refresh Integration', () => {
         serviceRouter.getServiceWithAuth('unknown-service.method', 'user-id')
       ).rejects.toThrow('Service not found: unknown-service');
 
-      expect(oauthFlowService.getValidToken).not.toHaveBeenCalled();
+      expect(mockOAuthClient.getToken).not.toHaveBeenCalled();
     });
 
     it('should throw error for unmapped OAuth providers', async () => {

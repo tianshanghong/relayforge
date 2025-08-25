@@ -9,6 +9,7 @@ import { GoogleCalendarCompleteServer } from './servers/google-calendar-complete
 import { TokenValidator } from './auth/token-validator.js';
 import { BillingService } from './services/billing.service.js';
 import { ServiceRouter } from './routing/service-router.js';
+import { OAuthClient } from './clients/oauth-client.js';
 import { mcpTokenService } from '@relayforge/database';
 import { registerServiceDiscoveryRoutes } from './routes/service-discovery.js';
 
@@ -23,6 +24,21 @@ fastify.register(fastifyWebsocket);
 const tokenValidator = new TokenValidator();
 const billingService = new BillingService();
 const serviceRouter = new ServiceRouter();
+
+// Configure OAuth client if environment variables are set
+if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
+  const oauthClient = new OAuthClient(
+    process.env.OAUTH_SERVICE_URL,
+    process.env.INTERNAL_API_KEY
+  );
+  serviceRouter.setOAuthClient(oauthClient);
+  fastify.log.info('OAuth client configured for service-to-service communication');
+} else {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('OAuth configuration (OAUTH_SERVICE_URL and INTERNAL_API_KEY) is required in production');
+  }
+  fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
+}
 
 // Register services
 const googleCalendarServer = new GoogleCalendarCompleteServer();
