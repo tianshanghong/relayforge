@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { accountRoutes } from './routes/account.routes.js';
 import { sessionRoutes } from './routes/session.routes.js';
 import { tokensRoutes } from './routes/tokens.routes.js';
+import { internalRoutes } from './routes/internal.routes.js';
 import { config } from './config.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { sessionCleanupJob } from './jobs/session-cleanup.js';
@@ -65,6 +66,7 @@ async function start() {
   await fastify.register(accountRoutes, { prefix: '/api/account' });
   await fastify.register(sessionRoutes);
   await fastify.register(tokensRoutes);
+  await fastify.register(internalRoutes);
 
   // Health check
   fastify.get('/health', async () => {

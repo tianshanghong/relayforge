@@ -22,6 +22,10 @@ console.log(`JWT_SECRET=${generateKey()}`);
 console.log(`ADMIN_KEY=${generateKey()}`);
 console.log('');
 
+console.log('# Service-to-Service Communication');
+console.log(`INTERNAL_API_KEY=${generateKey()}`);
+console.log('');
+
 console.log('✅ Keys generated successfully!');
 console.log('');
 console.log('📋 Copy these values to your .env files');
