@@ -2,13 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ServiceRouter } from '../src/routing/service-router';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { GoogleCalendarCompleteServer } from '../src/servers/google-calendar-complete';
+import { OAuthClient } from '../src/clients/oauth-client';
 
-// Mock the oauth service
-vi.mock('@relayforge/oauth-service/services', () => ({
-  oauthFlowService: {
-    getValidToken: vi.fn(),
-  },
-}));
+// Mock the OAuth client
+vi.mock('../src/clients/oauth-client');
 
 // Mock the config
 vi.mock('../src/config/service-providers', () => ({
@@ -20,11 +17,20 @@ vi.mock('../src/config/service-providers', () => ({
 
 describe('Token Refresh in Gateway', () => {
   let serviceRouter: ServiceRouter;
-  let mockOAuthService: any;
+  let mockOAuthClient: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     serviceRouter = new ServiceRouter();
+    
+    // Create mock OAuth client
+    mockOAuthClient = {
+      getToken: vi.fn(),
+      healthCheck: vi.fn(),
+    };
+    
+    // Set the mock OAuth client
+    serviceRouter.setOAuthClient(mockOAuthClient as OAuthClient);
     
     // Register Google Calendar service
     const googleCalendarServer = new GoogleCalendarCompleteServer();
@@ -34,24 +40,20 @@ describe('Token Refresh in Gateway', () => {
       requiresAuth: true,
       adapter: new MCPHttpAdapter(googleCalendarServer),
     });
-
-    // Get mocked oauth service
-    const { oauthFlowService } = await import('@relayforge/oauth-service/services');
-    mockOAuthService = oauthFlowService;
   });
 
   it('should use getValidToken which handles automatic token refresh', async () => {
     const userId = 'test-user-123';
     const freshAccessToken = 'fresh-access-token-after-refresh';
     
-    // Mock getValidToken to return a fresh token
-    mockOAuthService.getValidToken.mockResolvedValue(freshAccessToken);
+    // Mock OAuth client getToken to return a fresh token
+    mockOAuthClient.getToken.mockResolvedValue(freshAccessToken);
 
     // Call getServiceWithAuth
     const result = await serviceRouter.getServiceWithAuth('google-calendar_create-event', userId);
 
-    // Verify getValidToken was called (not getToken)
-    expect(mockOAuthService.getValidToken).toHaveBeenCalledWith(userId, 'google');
+    // Verify OAuth client getToken was called
+    expect(mockOAuthClient.getToken).toHaveBeenCalledWith(userId, 'google');
     
     // Verify we got the fresh token
     expect(result.accessToken).toBe(freshAccessToken);
@@ -61,8 +63,8 @@ describe('Token Refresh in Gateway', () => {
   it('should handle token refresh errors gracefully', async () => {
     const userId = 'test-user-123';
     
-    // Mock getValidToken to throw an error (e.g., refresh failed)
-    mockOAuthService.getValidToken.mockRejectedValue(new Error('Refresh token invalid'));
+    // Mock getToken to throw an error (e.g., refresh failed)
+    mockOAuthClient.getToken.mockRejectedValue(new Error('Refresh token invalid'));
 
     // Call should throw an OAuthTokenError
     await expect(
@@ -73,10 +75,10 @@ describe('Token Refresh in Gateway', () => {
   it('demonstrates that expired tokens are automatically refreshed', async () => {
     const userId = 'test-user-123';
     
-    // Simulate the behavior of getValidToken:
+    // Simulate the behavior of getToken:
     // 1. First call: token is expired, so it refreshes and returns new token
     // 2. Second call: token is still valid, returns same token
-    mockOAuthService.getValidToken
+    mockOAuthClient.getToken
       .mockResolvedValueOnce('refreshed-token-1')
       .mockResolvedValueOnce('refreshed-token-1');
 
@@ -88,7 +90,7 @@ describe('Token Refresh in Gateway', () => {
     const result2 = await serviceRouter.getServiceWithAuth('google-calendar_list-events', userId);
     expect(result2.accessToken).toBe('refreshed-token-1');
 
-    // getValidToken was called twice
-    expect(mockOAuthService.getValidToken).toHaveBeenCalledTimes(2);
+    // getToken was called twice
+    expect(mockOAuthClient.getToken).toHaveBeenCalledTimes(2);
   });
 });

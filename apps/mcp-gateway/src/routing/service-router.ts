@@ -1,5 +1,5 @@
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
-import { oauthFlowService } from '@relayforge/oauth-service/dist/services';
+import { OAuthClient } from '../clients/oauth-client.js';
 import { 
   ServiceNotFoundError, 
   OAuthTokenError, 
@@ -16,6 +16,11 @@ export interface ServiceConfig {
 
 export class ServiceRouter {
   private services: Map<string, ServiceConfig> = new Map();
+  private oauthClient: OAuthClient | null = null;
+
+  setOAuthClient(client: OAuthClient) {
+    this.oauthClient = client;
+  }
 
   registerService(config: ServiceConfig) {
     this.services.set(config.prefix, config);
@@ -60,9 +65,14 @@ export class ServiceRouter {
       throw new ProviderNotMappedError(service.prefix);
     }
 
+    // Ensure OAuth client is configured
+    if (!this.oauthClient) {
+      throw new Error('OAuth client not configured. Please set OAUTH_SERVICE_URL and INTERNAL_API_KEY.');
+    }
+
     try {
-      // Use getValidToken which handles automatic refresh
-      const accessToken = await oauthFlowService.getValidToken(userId, provider);
+      // Use OAuth client to get token via internal API
+      const accessToken = await this.oauthClient.getToken(userId, provider);
       
       return { service, accessToken };
     } catch (error) {
