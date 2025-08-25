@@ -8,13 +8,61 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/pull_request_template.md'
+      - 'LICENSE'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/tianshanghong/relayforge
 
 jobs:
+  # Detect which services have changed to optimize build/scan
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      oauth-service: ${{ steps.changes.outputs.oauth-service }}
+      mcp-gateway: ${{ steps.changes.outputs.mcp-gateway }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      any-service: ${{ steps.changes.outputs.any-service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            oauth-service:
+              - 'apps/oauth-service/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            mcp-gateway:
+              - 'apps/mcp-gateway/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            frontend:
+              - 'apps/frontend/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            any-service:
+              - 'apps/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+
   build-and-push:
+    needs: detect-changes
+    # Skip if no services changed (only on PRs, always run on main)
+    if: github.event_name == 'push' || needs.detect-changes.outputs.any-service == 'true'
     # Use Buildjet ARM64 for PRs (fast single platform), GitHub runners for main (free multi-platform)
     runs-on: ${{ github.event_name == 'pull_request' && 'buildjet-4vcpu-ubuntu-2204-arm' || 'ubuntu-latest' }}
     timeout-minutes: 30  # Prevent stuck builds
@@ -77,19 +125,31 @@ jobs:
           sbom: false
           
       - name: Run Trivy vulnerability scanner
+        # Skip scan on PRs if this specific service didn't change
+        if: github.event_name == 'push' || needs.detect-changes.outputs[matrix.service.name] == 'true'
         uses: aquasecurity/trivy-action@master
+        # Make non-blocking on PRs but keep blocking on main
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         with:
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           format: 'sarif'
           output: 'trivy-results-${{ matrix.service.name }}.sarif'
-          severity: 'CRITICAL,HIGH'
+          # Only scan CRITICAL on PRs for speed, scan both CRITICAL and HIGH on main
+          severity: ${{ github.event_name == 'pull_request' && 'CRITICAL' || 'CRITICAL,HIGH' }}
+          # Skip database update on PRs to speed up scanning
+          skip-db-update: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          # Timeout after 5 minutes on PRs, 10 minutes on main
+          timeout: ${{ github.event_name == 'pull_request' && '5m' || '10m' }}
           
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Upload results if scan was performed (and always on main branch)
+        if: always() && (github.event_name == 'push' || needs.detect-changes.outputs[matrix.service.name] == 'true')
         with:
           sarif_file: 'trivy-results-${{ matrix.service.name }}.sarif'
           category: 'trivy-${{ matrix.service.name }}'
+          # Don't fail the workflow if upload fails on PRs
+          continue-on-error: ${{ github.event_name == 'pull_request' }}
 
   # Run database migrations as a separate job
   migrate:
