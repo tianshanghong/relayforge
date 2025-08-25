@@ -131,7 +131,7 @@ export async function internalRoutes(fastify: FastifyInstance) {
         },
       },
     },
-  }, async (request, reply) => {
+  }, async (_request, reply) => {
     return reply.send({
       status: 'healthy',
       timestamp: new Date().toISOString(),
