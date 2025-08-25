@@ -34,6 +34,9 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
   serviceRouter.setOAuthClient(oauthClient);
   fastify.log.info('OAuth client configured for service-to-service communication');
 } else {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('OAuth configuration (OAUTH_SERVICE_URL and INTERNAL_API_KEY) is required in production');
+  }
   fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
 }
 

@@ -6,7 +6,14 @@ export class OAuthClient {
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string
-  ) {}
+  ) {
+    if (!baseUrl || !baseUrl.match(/^https?:\/\//)) {
+      throw new Error('Invalid OAuth service URL format');
+    }
+    if (!apiKey || apiKey.length < 32) {
+      throw new Error('Invalid API key format');
+    }
+  }
 
   /**
    * Fetches a valid OAuth access token for the specified provider and user
@@ -25,7 +32,8 @@ export class OAuthClient {
           'Authorization': `Bearer ${this.apiKey}`,
           'X-User-Id': userId,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
       });
 
       if (!response.ok) {
@@ -70,7 +78,8 @@ export class OAuthClient {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`
-        }
+        },
+        signal: AbortSignal.timeout(3000) // 3 second timeout for health check
       });
       
       return response.ok;
