@@ -40,6 +40,10 @@ describe('Gateway Token Refresh Integration', () => {
       prefix: 'google-calendar',
       requiresAuth: true,
       adapter: mockAdapter,
+      authConfig: {
+        type: 'oauth',
+        provider: 'google'
+      }
     });
   });
 
@@ -134,12 +138,16 @@ describe('Gateway Token Refresh Integration', () => {
     });
 
     it('should throw error for unmapped OAuth providers', async () => {
-      // Register a service with no OAuth provider mapping
+      // Register a service with OAuth auth but no provider specified
       serviceRouter.registerService({
         name: 'Unmapped Service',
         prefix: 'unmapped-service',
         requiresAuth: true,
         adapter: mockAdapter,
+        authConfig: {
+          type: 'oauth',
+          provider: undefined // Missing provider
+        } as any
       });
 
       await expect(

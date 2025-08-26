@@ -39,6 +39,10 @@ describe('Token Refresh in Gateway', () => {
       prefix: 'google-calendar',
       requiresAuth: true,
       adapter: new MCPHttpAdapter(googleCalendarServer),
+      authConfig: {
+        type: 'oauth',
+        provider: 'google'
+      }
     });
   });
 
