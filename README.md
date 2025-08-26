@@ -106,12 +106,39 @@ pnpm dev
 See [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md) for detailed configuration instructions.
 
 ### Production
-```bash
-# Build all services
-pnpm build
 
-# Run with production environment
-NODE_ENV=production pnpm start
+For detailed production deployment, see [Deployment Guide](./docs/DEPLOYMENT.md).
+
+#### Custom Domain Setup
+
+To host RelayForge with your own domain:
+
+1. **Update environment variables** in `.env.production`:
+```bash
+# Replace 'yourdomain.com' with your actual domain
+DOMAIN_NAME=yourdomain.com
+FRONTEND_URL=https://yourdomain.com
+MCP_BASE_URL=https://api.yourdomain.com
+GOOGLE_REDIRECT_URI=https://api.yourdomain.com/oauth/google/callback
+VITE_API_BASE_URL=https://api.yourdomain.com
+VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com
+```
+
+2. **Update nginx.conf**:
+   - Replace all instances of `relayforge.xyz` with your domain
+   - Replace `api.relayforge.xyz` with `api.yourdomain.com`
+
+3. **Configure DNS**:
+   - Point `yourdomain.com` and `www.yourdomain.com` to your server
+   - Point `api.yourdomain.com` to your server
+
+4. **Update OAuth providers**:
+   - Add `https://api.yourdomain.com/oauth/google/callback` to Google OAuth authorized redirect URIs
+
+5. **Deploy**:
+```bash
+pnpm build
+./scripts/deployment/deploy.sh
 ```
 
 ## Contributing

@@ -34,9 +34,9 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: https://api.relayforge.xyz/oauth/google/callback
-      FRONTEND_URL: https://relayforge.xyz
-      ALLOWED_ORIGINS: https://relayforge.xyz,http://localhost:5173
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.yourdomain.com/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-https://yourdomain.com}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-${FRONTEND_URL:-https://yourdomain.com},http://localhost:5173}
       ADMIN_KEY: ${ADMIN_KEY}
     # Uses Node.js health check from Dockerfile
 
@@ -56,6 +56,7 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/relayforge
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       OAUTH_SERVICE_URL: http://oauth-service:3002
+      MCP_BASE_URL: ${MCP_BASE_URL:-https://api.yourdomain.com}
       GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}

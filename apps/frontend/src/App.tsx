@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ServerCard } from './components/ServerCard'
 import { Hero } from './components/Hero'
 import { AuthSection } from './components/AuthSection'
+import { API_BASE_URL } from './config'
 
 interface MCPServer {
   name: string
@@ -64,7 +65,7 @@ function App() {
   "mcpServers": {
     "hello-world": {
       "command": "curl",
-      "args": ["-X", "POST", "https://api.relayforge.xyz/mcp/hello-world"]
+      "args": ["-X", "POST", "${API_BASE_URL}/mcp/hello-world"]
     }
   }
 }`}</code>
@@ -73,7 +74,7 @@ function App() {
             <div>
               <h4 className="font-semibold text-gray-800">For Cursor:</h4>
               <pre className="bg-gray-100 p-3 rounded text-sm mt-2 overflow-x-auto">
-                <code>https://api.relayforge.xyz/mcp/hello-world</code>
+                <code>${API_BASE_URL}/mcp/hello-world</code>
               </pre>
             </div>
           </div>
