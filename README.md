@@ -109,13 +109,26 @@ See [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md) for detailed configur
 
 For detailed production deployment, see [Deployment Guide](./docs/DEPLOYMENT.md).
 
+#### Environment Configuration
+
+RelayForge supports three environments with pre-configured domains:
+
+| Environment | Domain | Config File | Docker Compose |
+|------------|--------|-------------|----------------|
+| Local | localhost | `.env` (from `.env.example`) | `docker-compose.local.yml` |
+| Development | relayforge.dev | `.env.development` | `docker-compose.dev.yml` |
+| Production | relayforge.xyz | `.env.production` | `docker-compose.prod.yml` |
+
 #### Custom Domain Setup
 
 To host RelayForge with your own domain:
 
-1. **Update environment variables** in `.env.production`:
+1. **Copy the appropriate environment template**:
+   - For production: Copy `.env.production.example` to `.env.production`
+   - For development: Copy `.env.development.example` to `.env.development`
+
+2. **Update environment variables** with your domain:
 ```bash
-# Replace 'yourdomain.com' with your actual domain
 DOMAIN_NAME=yourdomain.com
 FRONTEND_URL=https://yourdomain.com
 MCP_BASE_URL=https://api.yourdomain.com
@@ -124,18 +137,18 @@ VITE_API_BASE_URL=https://api.yourdomain.com
 VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com
 ```
 
-2. **Update nginx.conf**:
-   - Replace all instances of `relayforge.xyz` with your domain
+3. **Update nginx.conf**:
+   - Replace `relayforge.xyz` with your domain
    - Replace `api.relayforge.xyz` with `api.yourdomain.com`
 
-3. **Configure DNS**:
+4. **Configure DNS**:
    - Point `yourdomain.com` and `www.yourdomain.com` to your server
    - Point `api.yourdomain.com` to your server
 
-4. **Update OAuth providers**:
-   - Add `https://api.yourdomain.com/oauth/google/callback` to Google OAuth authorized redirect URIs
+5. **Update OAuth providers**:
+   - Add your redirect URI to Google OAuth authorized callbacks
 
-5. **Deploy**:
+6. **Deploy**:
 ```bash
 pnpm build
 ./scripts/deployment/deploy.sh
