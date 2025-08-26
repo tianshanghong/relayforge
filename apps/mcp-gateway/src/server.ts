@@ -49,6 +49,10 @@ serviceRouter.registerService({
   prefix: 'google-calendar',
   requiresAuth: true,
   adapter: new MCPHttpAdapter(googleCalendarService),
+  authConfig: {
+    type: 'oauth',
+    provider: 'google'
+  }
 });
 
 // Register hello-world for testing
