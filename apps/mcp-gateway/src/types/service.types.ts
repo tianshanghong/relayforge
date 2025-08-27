@@ -19,6 +19,11 @@ export interface MCPService extends MCPServerHandler {
    * Set API key for authenticated requests
    */
   setApiKey?(key: string): void;
+  
+  /**
+   * Set environment variables for API key services
+   */
+  setEnvironment?(env: Record<string, string>): void;
 }
 
 /**
@@ -27,6 +32,7 @@ export interface MCPService extends MCPServerHandler {
 export interface AuthInjectableService extends MCPServerHandler {
   setAccessToken?(token: string): void;
   setApiKey?(key: string): void;
+  setEnvironment?(env: Record<string, string>): void;
 }
 
 /**
