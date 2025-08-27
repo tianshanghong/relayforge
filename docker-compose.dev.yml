@@ -42,9 +42,9 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: http://localhost:3002/oauth/google/callback
-      FRONTEND_URL: http://localhost:5173
-      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.relayforge.dev/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-https://relayforge.dev}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.dev,http://localhost:5173}
       ADMIN_KEY: ${ADMIN_KEY}
     volumes:
       - ./apps/oauth-service/src:/app/apps/oauth-service/src
