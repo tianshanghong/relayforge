@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config'
+import { API_BASE_URL, getWebSocketUrl } from '../config'
 
 interface MCPServer {
   name: string
@@ -16,7 +16,7 @@ export function ServerCard({ server }: ServerCardProps) {
   }
 
   const serverUrl = `${API_BASE_URL}${server.url}`
-  const wsUrl = `${API_BASE_URL.replace(/^https?/, 'ws').replace(/^http/, 'ws')}${server.websocket_url}`
+  const wsUrl = `${getWebSocketUrl(API_BASE_URL)}${server.websocket_url}`
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">

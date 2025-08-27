@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ServerCard } from './components/ServerCard'
 import { Hero } from './components/Hero'
 import { AuthSection } from './components/AuthSection'
-import { API_BASE_URL } from './config'
+import { API_BASE_URL, getApiUrl } from './config'
 
 interface MCPServer {
   name: string
@@ -15,7 +15,7 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/mcp/servers')
+    fetch(getApiUrl('/api/mcp/servers'))
       .then(res => res.json())
       .then(data => {
         setServers(data.servers || [])
