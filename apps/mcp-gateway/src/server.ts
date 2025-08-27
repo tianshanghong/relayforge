@@ -5,13 +5,14 @@ import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world.js';
-import { GoogleCalendarCompleteServer } from './servers/google-calendar-complete.js';
+import { GoogleCalendarService } from './services/google-calendar.service.js';
 import { TokenValidator } from './auth/token-validator.js';
 import { BillingService } from './services/billing.service.js';
 import { ServiceRouter } from './routing/service-router.js';
 import { OAuthClient } from './clients/oauth-client.js';
 import { mcpTokenService } from '@relayforge/database';
 import { registerServiceDiscoveryRoutes } from './routes/service-discovery.js';
+import { AuthInjectableService } from './types/service.types.js';
 
 const fastify = Fastify({
   logger: true
@@ -26,8 +27,9 @@ const billingService = new BillingService();
 const serviceRouter = new ServiceRouter();
 
 // Configure OAuth client if environment variables are set
+let oauthClient: OAuthClient | undefined;
 if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
-  const oauthClient = new OAuthClient(
+  oauthClient = new OAuthClient(
     process.env.OAUTH_SERVICE_URL,
     process.env.INTERNAL_API_KEY
   );
@@ -40,13 +42,16 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
   fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
 }
 
-// Register services
-const googleCalendarServer = new GoogleCalendarCompleteServer();
+// Register Google Calendar service
 serviceRouter.registerService({
-  name: 'Google Calendar',
+  name: 'Google Calendar', 
   prefix: 'google-calendar',
   requiresAuth: true,
-  adapter: new MCPHttpAdapter(googleCalendarServer),
+  adapter: new MCPHttpAdapter(new GoogleCalendarService()),
+  authConfig: {
+    type: 'oauth',
+    provider: 'google'
+  }
 });
 
 // Register hello-world for testing
@@ -194,9 +199,12 @@ async function handleMCPRequest(
 
   let success = false;
   try {
-    // Set access token if needed
-    if (accessToken && service.prefix === 'google-calendar') {
-      googleCalendarServer.setAccessToken(accessToken);
+    // Generic auth injection for OAuth services
+    if (accessToken && service.authConfig?.type === 'oauth') {
+      const serverHandler = service.adapter.getServerHandler();
+      if (serverHandler && 'setAccessToken' in serverHandler) {
+        (serverHandler as AuthInjectableService).setAccessToken!(accessToken);
+      }
     }
     
     // Strip service prefix for standard MCP methods
@@ -415,9 +423,12 @@ fastify.register(async function (fastify) {
         
         let success = false;
         try {
-          // Set access token if needed
-          if (accessToken && service.prefix === 'google-calendar') {
-            googleCalendarServer.setAccessToken(accessToken);
+          // Generic auth injection for OAuth services
+          if (accessToken && service.authConfig?.type === 'oauth') {
+            const serverHandler = service.adapter.getServerHandler();
+            if (serverHandler && 'setAccessToken' in serverHandler) {
+              (serverHandler as AuthInjectableService).setAccessToken!(accessToken);
+            }
           }
           
           // Strip service prefix for standard MCP methods

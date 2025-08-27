@@ -57,18 +57,23 @@ export async function registerServiceDiscoveryRoutes(
       let authType: 'oauth' | 'client-key' | 'none' = 'none';
       let isConnected: boolean | undefined = undefined;
       
-      if (service.requiresAuth) {
-        // Check if it's an OAuth service
-        const provider = getProviderForService(service.prefix);
-        if (provider) {
+      if (service.requiresAuth && service.authConfig) {
+        // Check authentication type from authConfig
+        const configAuthType = service.authConfig.type;
+        
+        if (configAuthType === 'oauth' && service.authConfig.provider) {
           authType = 'oauth';
           // Check if user has connected this OAuth provider
-          const tokens = await oauthService.getTokens(authInfo.userId, provider);
+          const tokens = await oauthService.getTokens(authInfo.userId, service.authConfig.provider);
           isConnected = tokens !== null && tokens.expiresAt > new Date();
+        } else if (configAuthType === 'api-key') {
+          authType = 'client-key'; // Map to expected response format
         } else {
-          // It's a client-key service
-          authType = 'client-key';
+          authType = 'none';
         }
+      } else if (service.requiresAuth) {
+        // Fallback for services without authConfig (shouldn't happen)
+        authType = 'client-key';
       }
 
       return {
@@ -128,4 +133,3 @@ async function getServiceMethods(service: any): Promise<string[]> {
 }
 
 // Import provider mapping
-import { getProviderForService } from '../config/service-providers.js';
