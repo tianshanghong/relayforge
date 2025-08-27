@@ -12,6 +12,13 @@ export class MCPHttpAdapter extends EventEmitter {
     super();
   }
 
+  /**
+   * Get the underlying server handler for auth injection or other direct access
+   */
+  getServerHandler(): MCPServerHandler {
+    return this.serverHandler;
+  }
+
   async handleHttpRequest(
     sessionId: string,
     message: MCPMessage

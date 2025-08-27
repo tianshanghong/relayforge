@@ -7,14 +7,6 @@ import { OAuthClient } from '../src/clients/oauth-client';
 // Mock the OAuth client
 vi.mock('../src/clients/oauth-client');
 
-// Mock the config
-vi.mock('../src/config/service-providers', () => ({
-  getProviderForService: vi.fn((service) => {
-    if (service === 'google-calendar') return 'google';
-    return null;
-  }),
-}));
-
 describe('Token Refresh in Gateway', () => {
   let serviceRouter: ServiceRouter;
   let mockOAuthClient: any;

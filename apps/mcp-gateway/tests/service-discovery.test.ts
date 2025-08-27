@@ -41,13 +41,6 @@ vi.mock('../src/auth/token-validator', () => ({
 }));
 
 // Mock config
-vi.mock('../src/config/service-providers', () => ({
-  getProviderForService: vi.fn((service: string) => {
-    if (service === 'google-calendar') return 'google';
-    if (service === 'github') return 'github';
-    return undefined;
-  }),
-}));
 
 describe('Service Discovery API', () => {
   let fastify: any;
@@ -151,6 +144,10 @@ describe('Service Discovery API', () => {
           name: 'Google Calendar',
           prefix: 'google-calendar',
           requiresAuth: true,
+          authConfig: {
+            type: 'oauth',
+            provider: 'google'
+          },
           adapter: {
             handleHttpRequest: vi.fn().mockResolvedValue({
               result: {
@@ -166,6 +163,10 @@ describe('Service Discovery API', () => {
           name: 'OpenAI',
           prefix: 'openai',
           requiresAuth: true,
+          authConfig: {
+            type: 'api-key',
+            envVar: 'OPENAI_API_KEY'
+          },
           adapter: {
             handleHttpRequest: vi.fn().mockResolvedValue({
               result: {

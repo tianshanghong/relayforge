@@ -1,9 +1,10 @@
 import { MCPRequest, MCPResponse } from '@relayforge/shared';
+import { MCPServerHandler } from '@relayforge/mcp-adapter';
 
 /**
  * Standard interface for all MCP services
  */
-export interface MCPService {
+export interface MCPService extends MCPServerHandler {
   /**
    * Handle an MCP request
    */
@@ -17,6 +18,14 @@ export interface MCPService {
   /**
    * Set API key for authenticated requests
    */
+  setApiKey?(key: string): void;
+}
+
+/**
+ * Interface for services that can receive authentication credentials
+ */
+export interface AuthInjectableService extends MCPServerHandler {
+  setAccessToken?(token: string): void;
   setApiKey?(key: string): void;
 }
 

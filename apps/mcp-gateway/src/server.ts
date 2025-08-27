@@ -12,6 +12,7 @@ import { ServiceRouter } from './routing/service-router.js';
 import { OAuthClient } from './clients/oauth-client.js';
 import { mcpTokenService } from '@relayforge/database';
 import { registerServiceDiscoveryRoutes } from './routes/service-discovery.js';
+import { AuthInjectableService } from './types/service.types.js';
 
 const fastify = Fastify({
   logger: true
@@ -42,13 +43,11 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
 }
 
 // Register Google Calendar service
-// For now, we'll keep the existing pattern while we transition
-const googleCalendarService = new GoogleCalendarService();
 serviceRouter.registerService({
   name: 'Google Calendar', 
   prefix: 'google-calendar',
   requiresAuth: true,
-  adapter: new MCPHttpAdapter(googleCalendarService),
+  adapter: new MCPHttpAdapter(new GoogleCalendarService()),
   authConfig: {
     type: 'oauth',
     provider: 'google'
@@ -200,12 +199,11 @@ async function handleMCPRequest(
 
   let success = false;
   try {
-    // Set access token if needed
+    // Generic auth injection for OAuth services
     if (accessToken && service.authConfig?.type === 'oauth') {
-      // For now, we handle Google Calendar specifically
-      // In the future, we should have a more generic way to inject auth
-      if (service.prefix === 'google-calendar') {
-        googleCalendarService.setAccessToken(accessToken);
+      const serverHandler = service.adapter.getServerHandler();
+      if (serverHandler && 'setAccessToken' in serverHandler) {
+        (serverHandler as AuthInjectableService).setAccessToken!(accessToken);
       }
     }
     
@@ -425,12 +423,11 @@ fastify.register(async function (fastify) {
         
         let success = false;
         try {
-          // Set access token if needed
+          // Generic auth injection for OAuth services
           if (accessToken && service.authConfig?.type === 'oauth') {
-            // For now, we handle Google Calendar specifically
-            // In the future, we should have a more generic way to inject auth
-            if (service.prefix === 'google-calendar') {
-              googleCalendarService.setAccessToken(accessToken);
+            const serverHandler = service.adapter.getServerHandler();
+            if (serverHandler && 'setAccessToken' in serverHandler) {
+              (serverHandler as AuthInjectableService).setAccessToken!(accessToken);
             }
           }
           
