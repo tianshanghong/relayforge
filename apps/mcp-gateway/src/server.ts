@@ -6,6 +6,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world.js';
 import { GoogleCalendarService } from './services/google-calendar.service.js';
+import { CoinbaseService } from './services/coinbase.service.js';
 import { TokenValidator } from './auth/token-validator.js';
 import { BillingService } from './services/billing.service.js';
 import { ServiceRouter } from './routing/service-router.js';
@@ -51,6 +52,17 @@ serviceRouter.registerService({
   authConfig: {
     type: 'oauth',
     provider: 'google'
+  }
+});
+
+// Register Coinbase service
+serviceRouter.registerService({
+  name: 'Coinbase',
+  prefix: 'coinbase',
+  requiresAuth: true,
+  adapter: new MCPHttpAdapter(new CoinbaseService()),
+  authConfig: {
+    type: 'api-key'
   }
 });
 
@@ -204,6 +216,26 @@ async function handleMCPRequest(
       const serverHandler = service.adapter.getServerHandler();
       if (serverHandler && 'setAccessToken' in serverHandler) {
         (serverHandler as AuthInjectableService).setAccessToken!(accessToken);
+      }
+    }
+    
+    // Generic environment variable injection for API key services
+    if (service.authConfig?.type === 'api-key') {
+      // Extract environment variables from headers (X-Env-*)
+      const envVars: Record<string, string> = {};
+      for (const [key, value] of Object.entries(request.headers)) {
+        if (key.toLowerCase().startsWith('x-env-')) {
+          const envName = key.substring(6); // Remove 'X-Env-' prefix
+          envVars[envName.toUpperCase().replace(/-/g, '_')] = value as string;
+        }
+      }
+      
+      // Inject environment variables if the service supports it
+      if (Object.keys(envVars).length > 0) {
+        const serverHandler = service.adapter.getServerHandler();
+        if (serverHandler && 'setEnvironment' in serverHandler) {
+          (serverHandler as AuthInjectableService).setEnvironment!(envVars);
+        }
       }
     }
     

@@ -20,6 +20,7 @@ async function main() {
     { service: 'linear', pricePerCall: 2, category: 'oauth', active: false },
     
     // Client-key services
+    { service: 'coinbase', pricePerCall: 1, category: 'api-key', active: true },
     { service: 'openai', pricePerCall: 0.5, category: 'api-key', active: false },
     { service: 'anthropic', pricePerCall: 0.5, category: 'api-key', active: false },
     { service: 'stripe', pricePerCall: 1, category: 'api-key', active: false },
