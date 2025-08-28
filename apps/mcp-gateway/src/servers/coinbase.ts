@@ -7,8 +7,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { MCPServerHandler } from '@relayforge/mcp-adapter';
 import { MCPRequest, MCPResponse } from '@relayforge/shared';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as crypto from 'crypto';
+import {
+  CoinbaseAccount,
+  CoinbaseTransaction,
+  CoinbaseExchangeRates,
+  CoinbaseApiResponse,
+  CoinbaseError,
+} from '../types/coinbase.types.js';
 
 /**
  * Coinbase MCP Server - Read-only access to Coinbase accounts
@@ -112,87 +119,16 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     // List tools handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
-        tools: [
-          {
-            name: 'coinbase_list_accounts',
-            description: 'List all accounts with balances',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-            },
-          },
-          {
-            name: 'coinbase_get_account',
-            description: 'Get details for a specific account',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                account_id: {
-                  type: 'string',
-                  description: 'The account ID',
-                },
-              },
-              required: ['account_id'],
-            },
-          },
-          {
-            name: 'coinbase_list_transactions',
-            description: 'List transactions for an account',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                account_id: {
-                  type: 'string',
-                  description: 'The account ID',
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum number of transactions to return (default 25)',
-                  default: 25,
-                },
-              },
-              required: ['account_id'],
-            },
-          },
-          {
-            name: 'coinbase_get_exchange_rates',
-            description: 'Get current exchange rates for a currency',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                currency: {
-                  type: 'string',
-                  description: 'The currency code (e.g., USD, BTC)',
-                  default: 'USD',
-                },
-              },
-            },
-          },
-        ],
+        tools: this.getToolDefinitions(),
       };
     });
 
     // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      switch (request.params.name) {
-        case 'coinbase_list_accounts':
-          return await this.listAccounts();
-        
-        case 'coinbase_get_account':
-          return await this.getAccount(request.params.arguments as any);
-        
-        case 'coinbase_list_transactions':
-          return await this.listTransactions(request.params.arguments as any);
-        
-        case 'coinbase_get_exchange_rates':
-          return await this.getExchangeRates(request.params.arguments as any);
-        
-        default:
-          throw new McpError(
-            ErrorCode.MethodNotFound,
-            `Unknown tool: ${request.params.name}`
-          );
-      }
+      return await this.executeTool(
+        request.params.name,
+        request.params.arguments as Record<string, unknown>
+      );
     });
   }
 
@@ -203,11 +139,11 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     this.ensureClient();
     
     try {
-      const response = await this.client!.get('/v2/accounts');
+      const response = await this.client!.get<CoinbaseApiResponse<CoinbaseAccount[]>>('/v2/accounts');
       const accounts = response.data.data;
       
       // Format account data for display
-      const formattedAccounts = accounts.map((account: any) => ({
+      const formattedAccounts = accounts.map((account) => ({
         id: account.id,
         name: account.name,
         currency: account.currency.code,
@@ -225,10 +161,10 @@ export class CoinbaseMCPServer implements MCPServerHandler {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error) {
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to list accounts: ${error.message}`
+        `Failed to list accounts: ${this.getErrorMessage(error)}`
       );
     }
   }
@@ -240,7 +176,7 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     this.ensureClient();
     
     try {
-      const response = await this.client!.get(`/v2/accounts/${account_id}`);
+      const response = await this.client!.get<CoinbaseApiResponse<CoinbaseAccount>>(`/v2/accounts/${account_id}`);
       const account = response.data.data;
       
       return {
@@ -263,10 +199,10 @@ export class CoinbaseMCPServer implements MCPServerHandler {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error) {
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to get account: ${error.message}`
+        `Failed to get account: ${this.getErrorMessage(error)}`
       );
     }
   }
@@ -278,13 +214,14 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     this.ensureClient();
     
     try {
-      const response = await this.client!.get(`/v2/accounts/${account_id}/transactions`, {
-        params: { limit },
-      });
+      const response = await this.client!.get<CoinbaseApiResponse<CoinbaseTransaction[]>>(
+        `/v2/accounts/${account_id}/transactions`,
+        { params: { limit } }
+      );
       const transactions = response.data.data;
       
       // Format transaction data
-      const formattedTransactions = transactions.map((tx: any) => ({
+      const formattedTransactions = transactions.map((tx) => ({
         id: tx.id,
         type: tx.type,
         status: tx.status,
@@ -305,10 +242,10 @@ export class CoinbaseMCPServer implements MCPServerHandler {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error) {
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to list transactions: ${error.message}`
+        `Failed to list transactions: ${this.getErrorMessage(error)}`
       );
     }
   }
@@ -320,9 +257,10 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     this.ensureClient();
     
     try {
-      const response = await this.client!.get(`/v2/exchange-rates`, {
-        params: { currency },
-      });
+      const response = await this.client!.get<CoinbaseApiResponse<CoinbaseExchangeRates>>(
+        `/v2/exchange-rates`,
+        { params: { currency } }
+      );
       const rates = response.data.data;
       
       return {
@@ -336,11 +274,104 @@ export class CoinbaseMCPServer implements MCPServerHandler {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error) {
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to get exchange rates: ${error.message}`
+        `Failed to get exchange rates: ${this.getErrorMessage(error)}`
       );
+    }
+  }
+
+  /**
+   * Get error message from various error types
+   */
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof AxiosError) {
+      const coinbaseError = error.response?.data as CoinbaseError | undefined;
+      if (coinbaseError?.message) {
+        return coinbaseError.message;
+      }
+      if (error.response?.status === 401) {
+        return 'Authentication failed. Check your API credentials.';
+      }
+      if (error.response?.status === 403) {
+        return 'Forbidden. Check your API key permissions.';
+      }
+      if (error.response?.status === 404) {
+        return 'Resource not found.';
+      }
+      if (error.response?.status === 429) {
+        return 'Rate limit exceeded. Please try again later.';
+      }
+      return error.message || 'Request failed';
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'Unknown error occurred';
+  }
+
+  /**
+   * Get tool definitions for the tools/list response
+   */
+  private getToolDefinitions() {
+    return [
+      {
+        name: 'coinbase_list_accounts',
+        description: 'List all accounts with balances',
+        inputSchema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'coinbase_get_account',
+        description: 'Get details for a specific account',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            account_id: { type: 'string', description: 'The account ID' },
+          },
+          required: ['account_id'],
+        },
+      },
+      {
+        name: 'coinbase_list_transactions',
+        description: 'List transactions for an account',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            account_id: { type: 'string', description: 'The account ID' },
+            limit: { type: 'number', description: 'Maximum number of transactions to return (default 25)', default: 25 },
+          },
+          required: ['account_id'],
+        },
+      },
+      {
+        name: 'coinbase_get_exchange_rates',
+        description: 'Get current exchange rates for a currency',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            currency: { type: 'string', description: 'The currency code (e.g., USD, BTC)', default: 'USD' },
+          },
+        },
+      },
+    ];
+  }
+
+  /**
+   * Execute a tool by name with given arguments
+   */
+  private async executeTool(toolName: string, args: Record<string, unknown> = {}): Promise<any> {
+    switch (toolName) {
+      case 'coinbase_list_accounts':
+        return await this.listAccounts();
+      case 'coinbase_get_account':
+        return await this.getAccount(args as { account_id: string });
+      case 'coinbase_list_transactions':
+        return await this.listTransactions(args as { account_id: string; limit?: number });
+      case 'coinbase_get_exchange_rates':
+        return await this.getExchangeRates(args as { currency?: string });
+      default:
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
     }
   }
 
@@ -349,180 +380,53 @@ export class CoinbaseMCPServer implements MCPServerHandler {
    */
   async handleRequest(request: MCPRequest): Promise<MCPResponse> {
     const { method, params, id } = request;
+    const responseId = id || 1;
 
     try {
       // Handle tools/list request
       if (method === 'tools/list') {
-        const handlers = (this.server as any)._requestHandlers || (this.server as any).requestHandlers;
-        if (handlers) {
-          const handler = handlers.get('tools/list');
-          if (handler) {
-            const result = await handler({
-              jsonrpc: '2.0',
-              id: id || 1,
-              method: 'tools/list',
-              params: {},
-            });
-            return result as MCPResponse;
-          }
-        }
-        
-        // Fallback: Return hardcoded tool list
         return {
           jsonrpc: '2.0',
-          id: id || 1,
+          id: responseId,
           result: {
-            tools: [
-              {
-                name: 'coinbase_list_accounts',
-                description: 'List all accounts with balances',
-                inputSchema: { type: 'object', properties: {} },
-              },
-              {
-                name: 'coinbase_get_account',
-                description: 'Get details for a specific account',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    account_id: { type: 'string', description: 'The account ID' },
-                  },
-                  required: ['account_id'],
-                },
-              },
-              {
-                name: 'coinbase_list_transactions',
-                description: 'List transactions for an account',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    account_id: { type: 'string', description: 'The account ID' },
-                    limit: { type: 'number', description: 'Maximum number of transactions to return (default 25)', default: 25 },
-                  },
-                  required: ['account_id'],
-                },
-              },
-              {
-                name: 'coinbase_get_exchange_rates',
-                description: 'Get current exchange rates for a currency',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    currency: { type: 'string', description: 'The currency code (e.g., USD, BTC)', default: 'USD' },
-                  },
-                },
-              },
-            ],
+            tools: this.getToolDefinitions(),
           },
         };
       }
 
       // Handle tools/call request
       if (method === 'tools/call') {
-        const handlers = (this.server as any)._requestHandlers || (this.server as any).requestHandlers;
-        if (handlers) {
-          const handler = handlers.get('tools/call');
-          if (handler) {
-            const result = await handler({
-              jsonrpc: '2.0',
-              id: id || 1,
-              method: 'tools/call',
-              params: params as any,
-            });
-            return result as MCPResponse;
-          }
-        }
-        
-        // Fallback to internal method handling
-        const toolName = params?.name;
+        const toolName = params?.name as string;
         const toolArgs = params?.arguments || {};
-        
-        switch (toolName) {
-          case 'coinbase_list_accounts': {
-            const result = await this.listAccounts();
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_get_account': {
-            const result = await this.getAccount(toolArgs as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_list_transactions': {
-            const result = await this.listTransactions(toolArgs as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_get_exchange_rates': {
-            const result = await this.getExchangeRates(toolArgs as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          default:
-            throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
-        }
+        const result = await this.executeTool(toolName, toolArgs as Record<string, unknown>);
+        return { jsonrpc: '2.0', id: responseId, result };
       }
 
       // Handle direct method calls (backward compatibility with prefixed methods)
       if (method.startsWith('coinbase_')) {
-        const handlers = (this.server as any)._requestHandlers || (this.server as any).requestHandlers;
-        if (handlers) {
-          const handler = handlers.get('tools/call');
-          if (handler) {
-            const result = await handler({
-              jsonrpc: '2.0',
-              id: id || 1,
-              method: 'tools/call',
-              params: {
-                name: method,
-                arguments: params || {},
-              },
-            });
-            return result as MCPResponse;
-          }
-        }
-        
-        // Fallback to direct handling
-        switch (method) {
-          case 'coinbase_list_accounts': {
-            const result = await this.listAccounts();
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_get_account': {
-            const result = await this.getAccount(params as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_list_transactions': {
-            const result = await this.listTransactions(params as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          case 'coinbase_get_exchange_rates': {
-            const result = await this.getExchangeRates(params as any);
-            return { jsonrpc: '2.0', id: id || 1, result };
-          }
-          default:
-            return {
-              jsonrpc: '2.0',
-              id: id || 1,
-              error: {
-                code: -32601,
-                message: `Method not found: ${method}`,
-              },
-            };
-        }
+        const result = await this.executeTool(method, params as Record<string, unknown>);
+        return { jsonrpc: '2.0', id: responseId, result };
       }
 
       // Method not found
       return {
         jsonrpc: '2.0',
-        id: id || 1,
+        id: responseId,
         error: {
           code: -32601,
           message: `Method not found: ${method}`,
         },
       };
-    } catch (error: any) {
+    } catch (error) {
+      const errorCode = error instanceof McpError ? error.code : -32603;
+      const errorMessage = error instanceof McpError ? error.message : this.getErrorMessage(error);
+      
       return {
         jsonrpc: '2.0',
-        id: id || 1,
+        id: responseId,
         error: {
-          code: error.code || -32603,
-          message: error.message || 'Internal error',
+          code: errorCode,
+          message: errorMessage,
         },
       };
     }
