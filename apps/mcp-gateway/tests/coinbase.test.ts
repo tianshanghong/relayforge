@@ -7,6 +7,21 @@ import crypto from 'crypto';
 // Mock axios
 vi.mock('axios');
 
+// Test constants
+const TEST_BALANCES = {
+  HIGH: '5.5',
+  MEDIUM: '10.0', 
+  LOW: '1.5',
+  ZERO: '0.1'
+} as const;
+
+const TEST_AMOUNTS = {
+  BTC: '1.5',
+  ETH: '10.0',
+  USD_BTC: '75000',
+  USD_ETH: '30000'
+} as const;
+
 describe('CoinbaseMCPServer', () => {
   let server: CoinbaseMCPServer;
   let mockAxiosInstance: any;
@@ -43,12 +58,21 @@ describe('CoinbaseMCPServer', () => {
       // Check that it's a successful response, not an error
       expect(response).not.toHaveProperty('error');
       
-      // The response should be the result object directly or wrapped in a result
-      const result = (response as any).result || response;
+      // Type assertion for successful response
+      interface ToolsListResponse {
+        jsonrpc: string;
+        id: number;
+        result?: {
+          tools: Array<{ name: string; description: string }>;
+        };
+      }
+      
+      const typedResponse = response as ToolsListResponse;
+      const result = typedResponse.result || response;
       expect(result).toHaveProperty('tools');
       expect(Array.isArray(result.tools)).toBe(true);
       
-      const toolNames = result.tools.map((t: any) => t.name);
+      const toolNames = result.tools.map((t) => t.name);
       expect(toolNames).toContain('coinbase_list_accounts');
       expect(toolNames).toContain('coinbase_get_account');
       expect(toolNames).toContain('coinbase_list_transactions');
@@ -69,7 +93,10 @@ describe('CoinbaseMCPServer', () => {
       });
 
       expect(response).toHaveProperty('error');
-      const error = (response as any).error;
+      interface ErrorResponse {
+        error: { code: number; message: string };
+      }
+      const { error } = response as ErrorResponse;
       expect(error.message).toContain('not configured');
     });
 
@@ -119,7 +146,10 @@ describe('CoinbaseMCPServer', () => {
       });
 
       expect(response).toHaveProperty('error');
-      const error = (response as any).error;
+      interface ErrorResponse {
+        error: { code: number; message: string };
+      }
+      const { error } = response as ErrorResponse;
       expect(error.code).toBe(-32601);
       expect(error.message).toContain('Method not found');
     });
@@ -151,7 +181,10 @@ describe('CoinbaseMCPServer', () => {
       });
 
       expect(response).toHaveProperty('error');
-      const error = (response as any).error;
+      interface ErrorResponse {
+        error: { code: number; message: string };
+      }
+      const { error } = response as ErrorResponse;
       // The error message includes the Coinbase error message "Invalid authentication"
       expect(error.message).toContain('Invalid authentication');
     });
@@ -181,13 +214,16 @@ describe('CoinbaseMCPServer', () => {
       });
 
       expect(response).toHaveProperty('error');
-      const error = (response as any).error;
+      interface ErrorResponse {
+        error: { code: number; message: string };
+      }
+      const { error } = response as ErrorResponse;
       expect(error.message).toContain('Rate limit exceeded');
     });
   });
 
   describe('JWT Generation', () => {
-    it('should generate valid JWT tokens', () => {
+    it('should set up JWT authentication interceptor', () => {
       const privateKey = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49
 AwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9
@@ -199,17 +235,47 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
         COINBASE_API_PRIVATE_KEY: privateKey
       });
       
-      // Trigger JWT generation by making a request
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          data: [],
-          pagination: null,
-        },
-      });
-
-      // We can't directly test the JWT generation since it's private,
-      // but we can verify that the interceptor is set up
+      // Verify that the interceptor is set up
       expect(mockAxiosInstance.interceptors.request.use).toHaveBeenCalled();
+      
+      // Get the interceptor function that was registered
+      const interceptorCall = mockAxiosInstance.interceptors.request.use.mock.calls[0];
+      expect(interceptorCall).toBeDefined();
+      expect(typeof interceptorCall[0]).toBe('function');
+      
+      // Mock jwt.sign to test the interceptor without real JWT generation
+      const originalSign = jwt.sign;
+      jwt.sign = vi.fn().mockReturnValue('mock.jwt.token');
+      
+      // Test the interceptor function
+      const interceptorFn = interceptorCall[0];
+      const testConfig = {
+        method: 'GET',
+        url: '/v2/accounts',
+        headers: {}
+      };
+      
+      const modifiedConfig = interceptorFn(testConfig);
+      
+      // Verify headers were added
+      expect(modifiedConfig.headers['Authorization']).toBe('Bearer mock.jwt.token');
+      expect(modifiedConfig.headers['CB-VERSION']).toBe('2024-01-01');
+      
+      // Verify jwt.sign was called with correct parameters
+      expect(jwt.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          iss: 'cdp',
+          sub: 'test-api-key',
+          uri: expect.stringContaining('GET api.coinbase.com/v2/accounts')
+        }),
+        expect.any(String),
+        expect.objectContaining({
+          algorithm: 'ES256'
+        })
+      );
+      
+      // Restore original jwt.sign
+      jwt.sign = originalSign;
     });
   });
 
@@ -229,8 +295,8 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
               id: 'btc-account',
               name: 'BTC Wallet',
               currency: { code: 'BTC' },
-              balance: { amount: '1.5', currency: 'BTC' },
-              native_balance: { amount: '75000', currency: 'USD' },
+              balance: { amount: TEST_AMOUNTS.BTC, currency: 'BTC' },
+              native_balance: { amount: TEST_AMOUNTS.USD_BTC, currency: 'USD' },
               type: 'wallet',
             },
           ],
@@ -248,8 +314,8 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
               id: 'eth-account',
               name: 'ETH Wallet',
               currency: { code: 'ETH' },
-              balance: { amount: '10.0', currency: 'ETH' },
-              native_balance: { amount: '30000', currency: 'USD' },
+              balance: { amount: TEST_AMOUNTS.ETH, currency: 'ETH' },
+              native_balance: { amount: TEST_AMOUNTS.USD_ETH, currency: 'USD' },
               type: 'wallet',
             },
           ],
@@ -270,7 +336,10 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
       });
 
       expect(response).not.toHaveProperty('error');
-      const result = (response as any).result;
+      interface SuccessResponse {
+        result: { content: Array<{ text: string }> };
+      }
+      const { result } = response as SuccessResponse;
       expect(result).toHaveProperty('content');
       
       const content = JSON.parse(result.content[0].text);
@@ -308,7 +377,10 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
       });
 
       expect(response).not.toHaveProperty('error');
-      const result = (response as any).result;
+      interface SuccessResponse {
+        result: { content: Array<{ text: string }> };
+      }
+      const { result } = response as SuccessResponse;
       const content = JSON.parse(result.content[0].text);
       expect(content).toHaveLength(0);
     });
@@ -352,10 +424,13 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
       });
 
       expect(response).not.toHaveProperty('error');
-      const result = (response as any).result;
+      interface SuccessResponse {
+        result: { content: Array<{ text: string }> };
+      }
+      const { result } = response as SuccessResponse;
       const content = JSON.parse(result.content[0].text);
       expect(content.id).toBe('btc-account');
-      expect(content.balance).toBe('1.5');
+      expect(content.balance).toBe(TEST_AMOUNTS.BTC);
     });
 
     it('should list transactions for an account', async () => {
@@ -387,7 +462,10 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
       });
 
       expect(response).not.toHaveProperty('error');
-      const result = (response as any).result;
+      interface SuccessResponse {
+        result: { content: Array<{ text: string }> };
+      }
+      const { result } = response as SuccessResponse;
       const content = JSON.parse(result.content[0].text);
       expect(content).toHaveLength(1);
       expect(content[0].id).toBe('tx1');
@@ -418,7 +496,10 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
       });
 
       expect(response).not.toHaveProperty('error');
-      const result = (response as any).result;
+      interface SuccessResponse {
+        result: { content: Array<{ text: string }> };
+      }
+      const { result } = response as SuccessResponse;
       const content = JSON.parse(result.content[0].text);
       expect(content.currency).toBe('USD');
       expect(content.rates).toHaveProperty('BTC');
@@ -448,14 +529,14 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
               id: 'high-balance',
               name: 'Main Wallet',
               currency: { code: 'BTC' },
-              balance: { amount: '5.5', currency: 'BTC' },
+              balance: { amount: TEST_BALANCES.HIGH, currency: 'BTC' },
               type: 'wallet',
             },
             {
               id: 'low-balance',
               name: 'Small Wallet',
               currency: { code: 'ETH' },
-              balance: { amount: '0.1', currency: 'ETH' },
+              balance: { amount: TEST_BALANCES.ZERO, currency: 'ETH' },
               type: 'wallet',
             },
           ],
