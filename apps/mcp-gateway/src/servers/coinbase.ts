@@ -7,8 +7,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { MCPServerHandler } from '@relayforge/mcp-adapter';
 import { MCPRequest, MCPResponse } from '@relayforge/shared';
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import * as crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import {
   CoinbaseAccount,
   CoinbaseTransaction,
@@ -49,7 +50,20 @@ export class CoinbaseMCPServer implements MCPServerHandler {
   setEnvironment(env: Record<string, string>): void {
     // Extract Coinbase credentials if present
     this.apiKeyName = env['COINBASE_API_KEY_NAME'];
-    this.apiPrivateKey = env['COINBASE_API_PRIVATE_KEY'];
+    // Handle escaped newlines in private key
+    this.apiPrivateKey = env['COINBASE_API_PRIVATE_KEY']?.replace(/\\n/g, '\n');
+    
+    if (this.apiKeyName && this.apiPrivateKey) {
+      this.initializeClient();
+    }
+  }
+  
+  /**
+   * Set credentials from headers (alternative to environment)
+   */
+  setCredentials(apiKeyName: string, apiPrivateKey: string): void {
+    this.apiKeyName = apiKeyName;
+    this.apiPrivateKey = apiPrivateKey.replace(/\\n/g, '\n');
     
     if (this.apiKeyName && this.apiPrivateKey) {
       this.initializeClient();
@@ -67,40 +81,61 @@ export class CoinbaseMCPServer implements MCPServerHandler {
       },
     });
 
-    // Add request interceptor for authentication
+    // Add request interceptor for JWT authentication
     this.client.interceptors.request.use((config) => {
-      const timestamp = Math.floor(Date.now() / 1000).toString();
       const method = config.method?.toUpperCase() || 'GET';
       const path = config.url || '';
-      const body = config.data ? JSON.stringify(config.data) : '';
       
-      const message = timestamp + method + path + body;
-      const signature = this.signRequest(message);
+      // Generate JWT token for this request
+      const token = this.generateJWT(path, method);
       
-      config.headers['CB-ACCESS-KEY'] = this.apiKeyName;
-      config.headers['CB-ACCESS-SIGN'] = signature;
-      config.headers['CB-ACCESS-TIMESTAMP'] = timestamp;
-      config.headers['CB-VERSION'] = '2024-01-01'; // Latest API version
+      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers['CB-VERSION'] = '2024-01-01'; // API version
       
       return config;
     });
   }
 
   /**
-   * Sign a request using the private key
+   * Generate a JWT token for Coinbase CDP API authentication
    */
-  private signRequest(message: string): string {
+  private generateJWT(path: string, method: string): string {
     if (!this.apiPrivateKey) {
       throw new Error('Private key not configured');
     }
     
-    // Coinbase uses JWT for API v3 (CDP API)
-    // For now, implementing v2 API with HMAC
-    const key = Buffer.from(this.apiPrivateKey, 'base64');
-    const hmac = crypto.createHmac('sha256', key);
-    const signature = hmac.update(message).digest('base64');
+    // Extract base path without query parameters
+    const basePath = path.split('?')[0];
+    const domain = 'api.coinbase.com';
+    const fullUri = `${method} ${domain}${basePath}`;
+    const now = Math.floor(Date.now() / 1000);
     
-    return signature;
+    // JWT header fields
+    const header = {
+      alg: 'ES256',
+      kid: this.apiKeyName,
+      nonce: crypto.randomBytes(16).toString('hex')
+    };
+    
+    // JWT payload fields
+    const payload = {
+      iss: 'cdp',              // Coinbase Developer Platform
+      sub: this.apiKeyName,
+      exp: now + 120,          // Valid for 2 minutes
+      nbf: now,
+      uri: fullUri
+    };
+    
+    try {
+      // Sign with ES256 algorithm using EC private key
+      const token = jwt.sign(payload, this.apiPrivateKey.replace(/\\n/g, '\n'), {
+        algorithm: 'ES256',
+        header
+      });
+      return token;
+    } catch (error) {
+      throw new Error(`Failed to generate JWT: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
@@ -133,17 +168,27 @@ export class CoinbaseMCPServer implements MCPServerHandler {
   }
 
   /**
-   * List all accounts
+   * List all accounts (with pagination support)
    */
   private async listAccounts() {
     this.ensureClient();
     
     try {
-      const response = await this.client!.get<CoinbaseApiResponse<CoinbaseAccount[]>>('/v2/accounts');
-      const accounts = response.data.data;
+      let allAccounts: CoinbaseAccount[] = [];
+      let nextUri: string | null = '/v2/accounts?limit=100';
+      
+      // Fetch all pages
+      while (nextUri) {
+        const response: AxiosResponse<CoinbaseApiResponse<CoinbaseAccount[]>> = await this.client!.get<CoinbaseApiResponse<CoinbaseAccount[]>>(nextUri);
+        const accounts = response.data.data;
+        allAccounts = allAccounts.concat(Array.isArray(accounts) ? accounts : [accounts as any]);
+        
+        // Get next page URL if it exists
+        nextUri = response.data.pagination?.next_uri || null;
+      }
       
       // Format account data for display
-      const formattedAccounts = accounts.map((account) => ({
+      const formattedAccounts = allAccounts.map((account) => ({
         id: account.id,
         name: account.name,
         currency: account.currency.code,
@@ -152,6 +197,13 @@ export class CoinbaseMCPServer implements MCPServerHandler {
         native_currency: account.native_balance?.currency,
         type: account.type,
       }));
+      
+      // Sort by balance (descending) to show non-zero balances first
+      formattedAccounts.sort((a, b) => {
+        const balA = parseFloat(a.balance) || 0;
+        const balB = parseFloat(b.balance) || 0;
+        return balB - balA;
+      });
       
       return {
         content: [
@@ -381,6 +433,18 @@ export class CoinbaseMCPServer implements MCPServerHandler {
   async handleRequest(request: MCPRequest): Promise<MCPResponse> {
     const { method, params, id } = request;
     const responseId = id || 1;
+    
+    // Check for credentials in params (for tools/call)
+    if (method === 'tools/call' && params?.arguments) {
+      const args = params.arguments as Record<string, any>;
+      if (args._coinbase_api_key_name && args._coinbase_private_key) {
+        // Set credentials from parameters
+        this.setCredentials(args._coinbase_api_key_name, args._coinbase_private_key);
+        // Remove credentials from arguments before processing
+        delete args._coinbase_api_key_name;
+        delete args._coinbase_private_key;
+      }
+    }
 
     try {
       // Handle tools/list request
