@@ -62,96 +62,89 @@ Header: Authorization: Bearer mcp_live_{your-token}
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+
-- PostgreSQL 14+
-- pnpm 9+
+- Docker and Docker Compose
 
-### Development
+### Quick Start
 
-#### Quick Start
 ```bash
 # 1. Clone the repository
 git clone https://github.com/tianshanghong/relayforge.git
 cd relayforge
 
-# 2. Install dependencies
-pnpm install
-
-# 3. Set up environment variables
+# 2. Copy environment configuration (optional - has development defaults)
 cp .env.example .env
-cp apps/oauth-service/.env.example apps/oauth-service/.env
-cp apps/frontend/.env.example apps/frontend/.env
+# Edit .env to add your Google OAuth credentials (required for OAuth features)
 
-# 4. Generate secure keys
-pnpm generate-keys
+# 3. Start all services
+docker-compose -f docker-compose.dev.yml up --build
 
-# 5. Update .env files with your values (database, OAuth credentials, etc.)
-
-# 6. Start PostgreSQL (if using Docker)
-pnpm db:start
-
-# 7. Run database migrations
-pnpm db:migrate
-
-# 8. Seed the database (optional)
-pnpm db:seed
-
-# 9. Validate your environment
-pnpm validate-env
-
-# 10. Start development servers
-pnpm dev
+# Services will be available at:
+# - Frontend: http://localhost:5173
+# - OAuth Service: http://localhost:3002  
+# - MCP Gateway: http://localhost:3001
+# - PostgreSQL: localhost:5432
 ```
 
-See [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md) for detailed configuration instructions.
+To stop services:
+```bash
+docker-compose -f docker-compose.dev.yml down
 
-### Production
+# To reset everything (including database):
+docker-compose -f docker-compose.dev.yml down -v
+```
 
-For detailed production deployment, see [Deployment Guide](./docs/DEPLOYMENT.md).
+For detailed environment variable documentation and OAuth setup, see [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md).
+
+### Production Deployment
+
+Production uses the same Docker Compose setup with production configuration:
+
+```bash
+# 1. Copy production environment configuration
+cp .env.production.example .env
+
+# 2. Update .env with production values:
+# - Set secure passwords and keys
+# - Configure your domain
+# - Add OAuth credentials for production
+
+# 3. Start services in production mode
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or build and run locally:
+docker-compose -f docker-compose.dev.yml up --build -d
+```
 
 #### Environment Configuration
 
-RelayForge supports three environments with pre-configured domains:
-
-| Environment | Domain | Config File | Docker Compose |
-|------------|--------|-------------|----------------|
-| Local | localhost | `.env` (from `.env.example`) | `docker-compose.local.yml` |
-| Development | relayforge.dev | `.env.development` | `docker-compose.dev.yml` |
-| Production | relayforge.xyz | `.env.production` | `docker-compose.prod.yml` |
+| Environment | Docker Compose File | Purpose |
+|------------|-------------------|---------|
+| Development | `docker-compose.dev.yml` | Local development with hot reload |
+| Production | `docker-compose.prod.yml` | Production with pre-built images |
+| Database Only | `docker-compose.local.yml` | Just PostgreSQL for hybrid development |
 
 #### Custom Domain Setup
 
 To host RelayForge with your own domain:
 
-1. **Copy the appropriate environment template**:
-   - For production: Copy `.env.production.example` to `.env.production`
-   - For development: Copy `.env.development.example` to `.env.development`
-
-2. **Update environment variables** with your domain:
+1. **Update environment variables** in `.env`:
 ```bash
 DOMAIN_NAME=yourdomain.com
 FRONTEND_URL=https://yourdomain.com
 MCP_BASE_URL=https://api.yourdomain.com
 GOOGLE_REDIRECT_URI=https://api.yourdomain.com/oauth/google/callback
-VITE_API_BASE_URL=https://api.yourdomain.com
-VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com
 ```
 
-3. **Update nginx.conf**:
-   - Replace `relayforge.xyz` with your domain
-   - Replace `api.relayforge.xyz` with `api.yourdomain.com`
-
-4. **Configure DNS**:
-   - Point `yourdomain.com` and `www.yourdomain.com` to your server
+2. **Configure DNS**:
+   - Point `yourdomain.com` to your server
    - Point `api.yourdomain.com` to your server
 
-5. **Update OAuth providers**:
+3. **Update OAuth providers**:
    - Add your redirect URI to Google OAuth authorized callbacks
 
-6. **Deploy**:
+4. **Deploy with Docker Compose**:
 ```bash
-pnpm build
-./scripts/deployment/deploy.sh
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ## Contributing

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -7,7 +5,7 @@ services:
     container_name: relayforge-postgres-dev
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -20,6 +18,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Database migration and seed
+  db-setup:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
+      target: builder  # Use the builder stage which has all dependencies
+    container_name: relayforge-db-setup-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/relayforge_dev
+    command: sh -c "cd packages/database && pnpm db:migrate:prod && pnpm db:seed"
+    restart: "no"  # Run once and exit
+
   # OAuth Service
   oauth-service:
     build:
@@ -28,6 +41,8 @@ services:
     container_name: relayforge-oauth-dev
     restart: unless-stopped
     depends_on:
+      db-setup:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     ports:
@@ -37,18 +52,21 @@ services:
       PORT: 3002
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/relayforge_dev
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-characters-long-for-security}
+      COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-at-least-32-characters-long}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.relayforge.dev/oauth/google/callback}
-      FRONTEND_URL: ${FRONTEND_URL:-https://relayforge.dev}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.dev,http://localhost:5173}
-      ADMIN_KEY: ${ADMIN_KEY}
-    volumes:
-      - ./apps/oauth-service/src:/app/apps/oauth-service/src
-      - ./packages:/app/packages
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3002/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3001,http://localhost:8080}
+      ADMIN_KEY: ${ADMIN_KEY:-test-admin-key-for-development-only}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # MCP Gateway
   mcp-gateway:
@@ -58,10 +76,12 @@ services:
     container_name: relayforge-gateway-dev
     restart: unless-stopped
     depends_on:
+      db-setup:
+        condition: service_completed_successfully
+      oauth-service:
+        condition: service_healthy
       postgres:
         condition: service_healthy
-      oauth-service:
-        condition: service_started
     ports:
       - "3001:3001"
     environment:
@@ -69,17 +89,21 @@ services:
       PORT: 3001
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/relayforge_dev
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-characters-long-for-security}
+      COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-at-least-32-characters-long}
       OAUTH_SERVICE_URL: http://oauth-service:3002
+      MCP_BASE_URL: ${MCP_BASE_URL:-http://localhost:3001}
       GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
-    volumes:
-      - ./apps/mcp-gateway/src:/app/apps/mcp-gateway/src
-      - ./packages:/app/packages
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Frontend Application
   frontend:
@@ -88,14 +112,15 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         NODE_ENV: development
-        VITE_OAUTH_SERVICE_URL: http://localhost:8080
+        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:8080/api}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
     container_name: relayforge-frontend-dev
     restart: unless-stopped
+    depends_on:
+      - oauth-service
+      - mcp-gateway
     ports:
       - "5173:80"
-    volumes:
-      - ./apps/frontend/src:/app/apps/frontend/src
-      - ./apps/frontend/public:/app/apps/frontend/public
 
   # Nginx (for local testing with proper routing)
   nginx:
@@ -110,6 +135,13 @@ services:
       - frontend
       - oauth-service
       - mcp-gateway
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   postgres_dev_data:
+    driver: local

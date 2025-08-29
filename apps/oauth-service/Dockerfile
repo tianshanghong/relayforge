@@ -1,6 +1,9 @@
 # Build stage
 FROM node:20-slim AS builder
 
+# Install build dependencies including openssl for Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

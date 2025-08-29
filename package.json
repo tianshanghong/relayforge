@@ -19,7 +19,11 @@
     "db:migrate": "cd packages/database && pnpm db:migrate",
     "db:seed": "cd packages/database && pnpm db:seed",
     "generate-keys": "tsx scripts/generate-env-keys.ts",
-    "validate-env": "tsx scripts/validate-env.ts"
+    "validate-env": "tsx scripts/validate-env.ts",
+    "start": "NODE_ENV=production node apps/mcp-gateway/dist/server.js",
+    "start:dev": "pnpm build && pnpm db:migrate && pnpm dev",
+    "deploy:local": "pnpm install && pnpm build && pnpm db:migrate && pnpm db:seed && pnpm dev",
+    "deploy:prod": "NODE_ENV=production pnpm install --frozen-lockfile && pnpm build && pnpm db:migrate && pnpm start"
   },
   "packageManager": "pnpm@9.12.3",
   "devDependencies": {
