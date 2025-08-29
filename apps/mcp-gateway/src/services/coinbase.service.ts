@@ -18,6 +18,7 @@ export class CoinbaseService implements MCPService {
   setEnvironment(env: Record<string, string>): void {
     this.server.setEnvironment(env);
   }
+  
 
   /**
    * Handle MCP request

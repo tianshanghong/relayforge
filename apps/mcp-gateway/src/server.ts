@@ -221,12 +221,22 @@ async function handleMCPRequest(
     
     // Generic environment variable injection for API key services
     if (service.authConfig?.type === 'api-key') {
-      // Extract environment variables from headers (X-Env-*)
+      // Extract service-specific environment variables from headers
+      // Format: X-Env-{SERVICE}-{VAR_NAME}
+      // Example: X-Env-COINBASE-API-KEY-NAME → COINBASE_API_KEY_NAME
       const envVars: Record<string, string> = {};
+      const servicePrefix = `x-env-${service.prefix}-`.toLowerCase();
+      
       for (const [key, value] of Object.entries(request.headers)) {
-        if (key.toLowerCase().startsWith('x-env-')) {
-          const envName = key.substring(6); // Remove 'X-Env-' prefix
-          envVars[envName.toUpperCase().replace(/-/g, '_')] = value as string;
+        const lowerKey = key.toLowerCase();
+        
+        // Check if header is for this specific service
+        if (lowerKey.startsWith(servicePrefix)) {
+          // Extract the env var name after the service prefix
+          const envName = key.substring(servicePrefix.length);
+          // Convert to standard env var format (uppercase with underscores)
+          const formattedEnvName = `${service.prefix.toUpperCase()}_${envName.toUpperCase().replace(/-/g, '_')}`;
+          envVars[formattedEnvName] = value as string;
         }
       }
       
