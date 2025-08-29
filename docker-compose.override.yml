@@ -12,7 +12,6 @@ services:
     build:
       context: .
       dockerfile: apps/oauth-service/Dockerfile
-      target: development
     ports:
       - "3002:3002"  # Direct access for debugging
     volumes:
@@ -32,7 +31,6 @@ services:
     build:
       context: .
       dockerfile: apps/mcp-gateway/Dockerfile
-      target: development
     ports:
       - "3001:3001"  # Direct access for debugging
     volumes:
@@ -48,7 +46,6 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
-      target: development
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002}
         VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:3002}
@@ -84,6 +81,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-relayforge}
-    command: sh -c "cd packages/database && pnpm db:migrate:dev && pnpm db:seed"
+    command: sh -c "cd packages/database && pnpm db:migrate && pnpm db:seed"
     restart: "no"
     profiles: ["setup"]  # Only runs with --profile setup
