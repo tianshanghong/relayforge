@@ -82,14 +82,6 @@ describe('CoinbaseMCPServer', () => {
       }).not.toThrow();
     });
 
-    it('should accept API credentials via setCredentials', () => {
-      expect(() => {
-        server.setCredentials(
-          'organizations/test-org/apiKeys/test-key',
-          '-----BEGIN EC PRIVATE KEY-----\ntest-key\n-----END EC PRIVATE KEY-----'
-        );
-      }).not.toThrow();
-    });
 
     it('should handle escaped newlines in private key', () => {
       expect(() => {
@@ -100,25 +92,6 @@ describe('CoinbaseMCPServer', () => {
       }).not.toThrow();
     });
 
-    it('should accept credentials from request parameters', async () => {
-      const response = await server.handleRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-          name: 'coinbase_get_exchange_rates',
-          arguments: {
-            _coinbase_api_key_name: 'test-key',
-            _coinbase_private_key: 'test-private-key',
-            currency: 'USD',
-          },
-        },
-      });
-
-      // The request should be processed (though it may fail due to mock setup)
-      expect(response).toBeDefined();
-      expect(response.id).toBe(1);
-    });
   });
 
   describe('Direct method calls', () => {
@@ -153,10 +126,11 @@ describe('CoinbaseMCPServer', () => {
 
     it('should handle axios errors with proper error messages', async () => {
       // Setup server with credentials
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
 
       // Create a proper AxiosError mock
       const axiosError = new AxiosError('Request failed');
@@ -183,10 +157,11 @@ describe('CoinbaseMCPServer', () => {
     });
 
     it('should handle rate limit errors', async () => {
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
 
       const rateLimitError = new AxiosError('Request failed');
       rateLimitError.response = {
@@ -219,7 +194,10 @@ AwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9
 PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
 -----END EC PRIVATE KEY-----`;
       
-      server.setCredentials('test-api-key', privateKey);
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME: 'test-api-key',
+        COINBASE_API_PRIVATE_KEY: privateKey
+      });
       
       // Trigger JWT generation by making a request
       mockAxiosInstance.get.mockResolvedValue({
@@ -237,10 +215,11 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
 
   describe('Pagination', () => {
     it('should handle paginated responses for list_accounts', async () => {
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
 
       // Mock first page
       mockAxiosInstance.get.mockResolvedValueOnce({
@@ -305,10 +284,11 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
     });
 
     it('should handle empty account lists', async () => {
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
 
       mockAxiosInstance.get.mockResolvedValue({
         data: {
@@ -336,10 +316,11 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
 
   describe('Account operations', () => {
     beforeEach(() => {
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
     });
 
     it('should get specific account details', async () => {
@@ -447,10 +428,11 @@ PwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==
 
   describe('Balance sorting', () => {
     it('should sort accounts by balance in descending order', async () => {
-      server.setCredentials(
-        'test-key',
-        '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
-      );
+      server.setEnvironment({
+        COINBASE_API_KEY_NAME:
+ 'test-key',
+        COINBASE_API_PRIVATE_KEY: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIIGLlamZU9Z83D3g8VsZqsMpwZ2u+SXLJQRkfPS5TGCkoAoGCCqGSM49\nAwEHoUQDQgAEQGOhhG8PlCEqfDuwWkExEefM6gwPQfYLfnHs8kBYVvxx8xS5bJO9\nPwM1ZjHln0S7kC7Sk+YoTM1j6FGEbNPDNw==\n-----END EC PRIVATE KEY-----'
+      });
 
       mockAxiosInstance.get.mockResolvedValue({
         data: {

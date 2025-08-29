@@ -221,55 +221,30 @@ async function handleMCPRequest(
     
     // Generic environment variable injection for API key services
     if (service.authConfig?.type === 'api-key') {
-      // Special handling for Coinbase - check custom headers
-      if (service.prefix === 'coinbase') {
-        const coinbaseKeyName = request.headers['x-coinbase-api-key-name'] as string;
-        const coinbasePrivateKey = request.headers['x-coinbase-private-key'] as string;
+      // Extract service-specific environment variables from headers
+      // Format: X-Env-{SERVICE}-{VAR_NAME}
+      // Example: X-Env-COINBASE-API-KEY-NAME → COINBASE_API_KEY_NAME
+      const envVars: Record<string, string> = {};
+      const servicePrefix = `x-env-${service.prefix}-`.toLowerCase();
+      
+      for (const [key, value] of Object.entries(request.headers)) {
+        const lowerKey = key.toLowerCase();
         
-        if (coinbaseKeyName && coinbasePrivateKey) {
-          // Get the service instance directly
-          const coinbaseService = service.adapter as any;
-          if (coinbaseService && coinbaseService.service && 'setCredentials' in coinbaseService.service) {
-            coinbaseService.service.setCredentials(coinbaseKeyName, coinbasePrivateKey);
-          } else {
-            // Try the server handler as fallback
-            const serverHandler = service.adapter.getServerHandler();
-            if (serverHandler && 'setCredentials' in serverHandler) {
-              (serverHandler as any).setCredentials(coinbaseKeyName, coinbasePrivateKey);
-            }
-          }
-        } else {
-          // Try environment variables as fallback
-          const envVars: Record<string, string> = {};
-          for (const [key, value] of Object.entries(request.headers)) {
-            if (key.toLowerCase().startsWith('x-env-')) {
-              const envName = key.substring(6);
-              envVars[envName.toUpperCase().replace(/-/g, '_')] = value as string;
-            }
-          }
-          
-          if (Object.keys(envVars).length > 0) {
-            const serverHandler = service.adapter.getServerHandler();
-            if (serverHandler && 'setEnvironment' in serverHandler) {
-              (serverHandler as AuthInjectableService).setEnvironment!(envVars);
-            }
-          }
+        // Check if header is for this specific service
+        if (lowerKey.startsWith(servicePrefix)) {
+          // Extract the env var name after the service prefix
+          const envName = key.substring(servicePrefix.length);
+          // Convert to standard env var format (uppercase with underscores)
+          const formattedEnvName = `${service.prefix.toUpperCase()}_${envName.toUpperCase().replace(/-/g, '_')}`;
+          envVars[formattedEnvName] = value as string;
         }
-      } else {
-        // For other API key services, use X-Env-* headers
-        const envVars: Record<string, string> = {};
-        for (const [key, value] of Object.entries(request.headers)) {
-          if (key.toLowerCase().startsWith('x-env-')) {
-            const envName = key.substring(6);
-            envVars[envName.toUpperCase().replace(/-/g, '_')] = value as string;
-          }
-        }
-        
-        if (Object.keys(envVars).length > 0) {
-          const serverHandler = service.adapter.getServerHandler();
-          if (serverHandler && 'setEnvironment' in serverHandler) {
-            (serverHandler as AuthInjectableService).setEnvironment!(envVars);
-          }
+      }
+      
+      // Inject environment variables if the service supports it
+      if (Object.keys(envVars).length > 0) {
+        const serverHandler = service.adapter.getServerHandler();
+        if (serverHandler && 'setEnvironment' in serverHandler) {
+          (serverHandler as AuthInjectableService).setEnvironment!(envVars);
         }
       }
     }

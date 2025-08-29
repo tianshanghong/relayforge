@@ -19,12 +19,6 @@ export class CoinbaseService implements MCPService {
     this.server.setEnvironment(env);
   }
   
-  /**
-   * Set credentials directly (for custom headers)
-   */
-  setCredentials(apiKeyName: string, apiPrivateKey: string): void {
-    this.server.setCredentials(apiKeyName, apiPrivateKey);
-  }
 
   /**
    * Handle MCP request

@@ -58,17 +58,6 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     }
   }
   
-  /**
-   * Set credentials from headers (alternative to environment)
-   */
-  setCredentials(apiKeyName: string, apiPrivateKey: string): void {
-    this.apiKeyName = apiKeyName;
-    this.apiPrivateKey = apiPrivateKey.replace(/\\n/g, '\n');
-    
-    if (this.apiKeyName && this.apiPrivateKey) {
-      this.initializeClient();
-    }
-  }
 
   /**
    * Initialize the Coinbase API client
@@ -434,17 +423,6 @@ export class CoinbaseMCPServer implements MCPServerHandler {
     const { method, params, id } = request;
     const responseId = id || 1;
     
-    // Check for credentials in params (for tools/call)
-    if (method === 'tools/call' && params?.arguments) {
-      const args = params.arguments as Record<string, any>;
-      if (args._coinbase_api_key_name && args._coinbase_private_key) {
-        // Set credentials from parameters
-        this.setCredentials(args._coinbase_api_key_name, args._coinbase_private_key);
-        // Remove credentials from arguments before processing
-        delete args._coinbase_api_key_name;
-        delete args._coinbase_private_key;
-      }
-    }
 
     try {
       // Handle tools/list request
