@@ -112,8 +112,8 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         NODE_ENV: development
-        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:8080/api}
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:3002}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002}
     container_name: relayforge-frontend-dev
     restart: unless-stopped
     depends_on:
