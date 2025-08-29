@@ -1,28 +1,19 @@
-# Production overrides - use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
-# This file extends docker-compose.yml with production-specific settings
+# Production overrides - minimal configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Environment variables should be set in .env or .env.production
 
 services:
-  # OAuth Service
+  # Use pre-built images from GitHub Container Registry
   oauth-service:
     image: ghcr.io/tianshanghong/relayforge/oauth-service:latest
-    environment:
-      NODE_ENV: production
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.relayforge.xyz/oauth/google/callback}
-      FRONTEND_URL: ${FRONTEND_URL:-https://relayforge.xyz}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.xyz}
 
-  # MCP Gateway
   mcp-gateway:
     image: ghcr.io/tianshanghong/relayforge/mcp-gateway:latest
-    environment:
-      NODE_ENV: production
-      MCP_BASE_URL: ${MCP_BASE_URL:-https://api.relayforge.xyz}
 
-  # Frontend Application
   frontend:
     image: ghcr.io/tianshanghong/relayforge/frontend:latest
 
-  # Nginx Reverse Proxy (production only)
+  # Production nginx with SSL
   nginx:
     image: nginx:stable
     restart: unless-stopped

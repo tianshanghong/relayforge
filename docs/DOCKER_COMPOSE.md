@@ -50,10 +50,9 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - Development environment variables
 
 ### docker-compose.prod.yml (Production)
-- Production image references
-- Production environment overrides
-- Nginx with SSL configuration
-- No direct port exposures (except nginx)
+- Pre-built image references from GitHub Container Registry
+- Nginx with SSL configuration (ports 80/443)
+- Minimal overrides only (environment variables come from .env)
 
 ## Benefits
 
