@@ -29,7 +29,7 @@ jobs:
       frontend: ${{ steps.changes.outputs.frontend }}
       any-service: ${{ steps.changes.outputs.any-service }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.3.0
       - uses: dorny/paths-filter@v2
         id: changes
         with:
@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.3.0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -159,7 +159,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.3.0
 
       - name: Deploy notification
         run: |
