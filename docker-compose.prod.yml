@@ -1,74 +1,28 @@
-services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-bookworm
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: relayforge
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+# Production overrides - use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# This file extends docker-compose.yml with production-specific settings
 
+services:
   # OAuth Service
   oauth-service:
     image: ghcr.io/tianshanghong/relayforge/oauth-service:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       NODE_ENV: production
-      PORT: 3002
-      HOST: 0.0.0.0
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/relayforge
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.relayforge.xyz/oauth/google/callback}
       FRONTEND_URL: ${FRONTEND_URL:-https://relayforge.xyz}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.xyz,http://localhost:5173}
-      ADMIN_KEY: ${ADMIN_KEY}
-    # Uses Node.js health check from Dockerfile
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.xyz}
 
   # MCP Gateway
   mcp-gateway:
     image: ghcr.io/tianshanghong/relayforge/mcp-gateway:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      oauth-service:
-        condition: service_healthy
     environment:
       NODE_ENV: production
-      PORT: 3001
-      HOST: 0.0.0.0
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/relayforge
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      OAUTH_SERVICE_URL: http://oauth-service:3002
       MCP_BASE_URL: ${MCP_BASE_URL:-https://api.relayforge.xyz}
-      GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
-    # Uses Node.js health check from Dockerfile
 
   # Frontend Application
   frontend:
     image: ghcr.io/tianshanghong/relayforge/frontend:latest
-    restart: unless-stopped
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy (production only)
   nginx:
     image: nginx:stable
     restart: unless-stopped
@@ -82,5 +36,3 @@ services:
       - frontend
       - oauth-service
       - mcp-gateway
-volumes:
-  postgres_data:

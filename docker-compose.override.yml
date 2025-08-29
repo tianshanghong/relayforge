@@ -1,0 +1,89 @@
+# Development overrides - automatically loaded with docker-compose up
+# This file extends docker-compose.yml with development-specific settings
+
+services:
+  # PostgreSQL Database
+  postgres:
+    ports:
+      - "5432:5432"  # Expose for local development tools
+
+  # OAuth Service
+  oauth-service:
+    build:
+      context: .
+      dockerfile: apps/oauth-service/Dockerfile
+      target: development
+    ports:
+      - "3002:3002"  # Direct access for debugging
+    volumes:
+      - ./apps/oauth-service:/app/apps/oauth-service
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/oauth-service/node_modules
+    environment:
+      NODE_ENV: development
+      # Development-specific overrides
+      GOOGLE_REDIRECT_URI: http://localhost:3002/oauth/google/callback
+      FRONTEND_URL: http://localhost:5173
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+
+  # MCP Gateway
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
+      target: development
+    ports:
+      - "3001:3001"  # Direct access for debugging
+    volumes:
+      - ./apps/mcp-gateway:/app/apps/mcp-gateway
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/mcp-gateway/node_modules
+    environment:
+      NODE_ENV: development
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: development
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002}
+        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:3002}
+    ports:
+      - "5173:80"  # Development frontend port
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - /app/node_modules
+      - /app/apps/frontend/node_modules
+    environment:
+      NODE_ENV: development
+
+  # Nginx for production-like testing
+  nginx:
+    image: nginx:stable
+    ports:
+      - "8080:80"  # Development nginx port
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - oauth-service
+      - mcp-gateway
+
+  # Database migration helper (development only)
+  db-migrate:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
+      target: builder
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-relayforge}
+    command: sh -c "cd packages/database && pnpm db:migrate:dev && pnpm db:seed"
+    restart: "no"
+    profiles: ["setup"]  # Only runs with --profile setup

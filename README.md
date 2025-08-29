@@ -75,22 +75,23 @@ cd relayforge
 cp .env.example .env
 # Edit .env to add your Google OAuth credentials (required for OAuth features)
 
-# 3. Start all services
-docker-compose -f docker-compose.dev.yml up --build
+# 3. Start all services (uses docker-compose.override.yml automatically)
+docker-compose up --build
 
 # Services will be available at:
 # - Frontend: http://localhost:5173
 # - OAuth Service: http://localhost:3002  
 # - MCP Gateway: http://localhost:3001
+# - Nginx (production-like): http://localhost:8080
 # - PostgreSQL: localhost:5432
 ```
 
 To stop services:
 ```bash
-docker-compose -f docker-compose.dev.yml down
+docker-compose down
 
 # To reset everything (including database):
-docker-compose -f docker-compose.dev.yml down -v
+docker-compose down -v
 ```
 
 For detailed environment variable documentation and OAuth setup, see [Environment Setup Guide](./docs/ENVIRONMENT_SETUP.md).
@@ -109,19 +110,15 @@ cp .env.production.example .env
 # - Add OAuth credentials for production
 
 # 3. Start services in production mode
-docker-compose -f docker-compose.prod.yml up -d
-
-# Or build and run locally:
-docker-compose -f docker-compose.dev.yml up --build -d
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 #### Environment Configuration
 
-| Environment | Docker Compose File | Purpose |
-|------------|-------------------|---------|
-| Development | `docker-compose.dev.yml` | Local development with hot reload |
-| Production | `docker-compose.prod.yml` | Production with pre-built images |
-| Database Only | `docker-compose.local.yml` | Just PostgreSQL for hybrid development |
+| Environment | Docker Compose Files | Purpose |
+|------------|---------------------|---------|
+| Development | `docker-compose.yml` + `docker-compose.override.yml` (auto) | Local development with hot reload |
+| Production | `docker-compose.yml` + `docker-compose.prod.yml` | Production with pre-built images |
 
 #### Custom Domain Setup
 
@@ -144,7 +141,7 @@ GOOGLE_REDIRECT_URI=https://api.yourdomain.com/oauth/google/callback
 
 4. **Deploy with Docker Compose**:
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 ## Contributing

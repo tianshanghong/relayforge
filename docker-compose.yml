@@ -1,0 +1,87 @@
+# Base configuration - shared across all environments
+# Development: docker-compose up (automatically uses docker-compose.override.yml)
+# Production: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-relayforge}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-relayforge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # OAuth Service
+  oauth-service:
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3002
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-relayforge}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-characters-long-for-security}
+      COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-at-least-32-characters-long}
+      ADMIN_KEY: ${ADMIN_KEY:-test-admin-key-for-development-only}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      FRONTEND_URL: ${FRONTEND_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MCP Gateway
+  mcp-gateway:
+    restart: unless-stopped
+    depends_on:
+      oauth-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-relayforge}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-characters-long-for-security}
+      COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-at-least-32-characters-long}
+      OAUTH_SERVICE_URL: http://oauth-service:3002
+      MCP_BASE_URL: ${MCP_BASE_URL}
+      GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Frontend
+  frontend:
+    restart: unless-stopped
+    depends_on:
+      - oauth-service
+      - mcp-gateway
+
+volumes:
+  postgres_data:
+    driver: local
