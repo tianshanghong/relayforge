@@ -13,12 +13,26 @@ Hosted MCP server platform that provides access to multiple services through a s
 - **MCP Servers**: Language-agnostic containers (Node.js, Python, Go, etc.)
 - **Infrastructure**: Docker containers with HTTP-based communication
 
-## Commands
+## Deployment
+
+### Docker (Recommended)
 ```bash
-pnpm install    # Install deps
-pnpm dev        # Start all services
-pnpm build      # Build all
-pnpm lint       # Run linting
+# Development/Production - same approach
+docker-compose -f docker-compose.dev.yml up --build
+
+# Stop services
+docker-compose -f docker-compose.dev.yml down
+
+# Reset everything (including database)
+docker-compose -f docker-compose.dev.yml down -v
+```
+
+### Local Development (Optional)
+```bash
+# For hot-reload development
+docker-compose -f docker-compose.local.yml up -d  # Just database
+pnpm install
+pnpm dev
 ```
 
 ## Architecture Overview
@@ -457,6 +471,7 @@ class MCPGateway {
 - OAuth token refresh with automatic retry
 - WebSocket support
 - Google Calendar MCP server (full CRUD operations)
+- Coinbase MCP server with CDP JWT authentication (PR #73)
 - Service discovery API (/services)
 - Usage tracking and billing (with method-level tracking)
 - Real-time credit display in error messages
@@ -468,6 +483,7 @@ class MCPGateway {
 - Docker multi-stage builds for optimized images
 - Consolidated API endpoints under api.relayforge.xyz
 - Health checks using Node.js instead of wget
+- Complete Docker Compose setup for all environments
 
 ### 🚧 In Progress (Phase 2)
 - Additional OAuth providers (GitHub, Slack)
