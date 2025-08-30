@@ -84,6 +84,18 @@ services:
       - oauth-service
       - mcp-gateway
 
+  # Database migration helper
+  db-migrate:
+    image: ghcr.io/tianshanghong/relayforge/mcp-gateway:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-relayforge}
+    command: sh -c "cd packages/database && npx prisma migrate deploy"
+    restart: "no"
+    profiles: ["migrate"]  # Only runs with --profile migrate
+
 volumes:
   postgres_data:
     driver: local

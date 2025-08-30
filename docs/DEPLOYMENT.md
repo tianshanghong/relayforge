@@ -124,7 +124,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Run database migrations
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml run --rm db-migrate
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
 
 # For SSL setup, see Step 2 (Cloudflare) or use Let's Encrypt
 ```
