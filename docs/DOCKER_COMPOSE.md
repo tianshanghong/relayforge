@@ -7,7 +7,7 @@ RelayForge uses Docker Compose's override pattern for clean environment separati
 ```
 docker-compose.yml              # Base configuration (shared)
 docker-compose.override.yml     # Development overrides (auto-loaded)
-docker-compose.prod.yml         # Production overrides (explicit)
+docker-compose.prod.yml         # Production/Staging overrides (explicit)
 ```
 
 ## Usage
@@ -25,9 +25,18 @@ docker-compose up
 # - Nginx: http://localhost:8080
 ```
 
+### Staging
+```bash
+# Build from source and deploy
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Uses same config as production but builds images locally
+```
+
 ### Production
 ```bash
-# Explicitly specify production overrides
+# Pull pre-built images and deploy
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Only nginx ports 80/443 exposed
@@ -49,8 +58,9 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - Volume mounts for hot reload
 - Development environment variables
 
-### docker-compose.prod.yml (Production)
-- Pre-built image references from GitHub Container Registry
+### docker-compose.prod.yml (Production/Staging)
+- Pre-built image references from GitHub Container Registry (production)
+- Can build from source with --build flag (staging)
 - Nginx with SSL configuration (ports 80/443)
 - Minimal overrides only (environment variables come from .env)
 
