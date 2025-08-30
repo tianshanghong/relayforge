@@ -1,140 +1,370 @@
 # RelayForge Deployment Guide
 
-This guide will help you deploy RelayForge on a VPS (Hetzner, DigitalOcean, etc.) in under 10 minutes.
+This comprehensive guide will help you deploy RelayForge from scratch on a VPS. Follow each step carefully to ensure a successful deployment.
 
-## MVP Features Ready for Deployment
+## Quick Start (Experienced Users)
 
-✅ **Core Platform**
-- User authentication via OAuth (Google)
-- Bearer token authentication for MCP clients
-- Session management with secure cookies
-- Credit system with $5 free credits for new users
+If you're familiar with Docker and VPS deployment:
 
-✅ **Services**
-- Google Calendar MCP server (full CRUD operations)
-- Service discovery API
-- Usage tracking and billing
+```bash
+# 1. Point your domain to VPS IP
+# 2. SSH to VPS and run:
+cd /opt && git clone https://github.com/tianshanghong/relayforge.git && cd relayforge
+./scripts/setup-vps.sh staging yourdomain.com
 
-✅ **Frontend**
-- Landing page with OAuth login
-- Token management UI
-- Account dashboard
+# 3. Add Google OAuth credentials to .env
+nano .env  # Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+
+# 4. Set up SSL certificates (see Step 4)
+mkdir -p nginx/ssl && cd nginx/ssl
+# Add your SSL certificates here
+
+# 5. Deploy
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
+
+# Done! Visit https://yourdomain.com
+```
+
+For detailed instructions, continue reading below.
 
 ## Prerequisites
 
-- A VPS (Hetzner, DigitalOcean, etc.) with at least 2GB RAM
-- Domain name (relayforge.xyz) with DNS access
-- Google OAuth credentials from Google Cloud Console
+Before starting, ensure you have:
 
-## Step 1: Server Setup (3 minutes)
+1. **VPS Server**
+   - Ubuntu 22.04 or 24.04 LTS
+   - Minimum 2GB RAM (4GB recommended)
+   - 20GB storage
+   - Root or sudo access
 
-SSH into your server and run:
+2. **Domain Name**
+   - A registered domain (e.g., yourdomain.com)
+   - Access to DNS management
+
+3. **Google Cloud Account**
+   - For OAuth authentication setup
+   - Access to Google Cloud Console
+
+4. **Cloudflare Account (Recommended)**
+   - For SSL certificates and DDoS protection
+   - Free plan is sufficient
+
+## Step 1: DNS Configuration
+
+First, configure your domain to point to your VPS.
+
+### Option A: Using Cloudflare (Recommended)
+
+1. Add your domain to Cloudflare
+2. Update your domain's nameservers to Cloudflare's
+3. In Cloudflare DNS, add:
+   ```
+   Type  Name    Content           Proxy Status
+   A     @       your-server-ip    Proxied (orange cloud)
+   A     www     your-server-ip    Proxied (orange cloud)
+   ```
+4. Wait for DNS propagation (5-30 minutes)
+
+### Option B: Direct DNS
+
+In your DNS provider, add:
+```
+Type  Name    Value
+A     @       your-server-ip
+A     www     your-server-ip
+```
+
+## Step 2: Server Initial Setup
+
+SSH into your VPS as root:
+
+```bash
+ssh root@your-server-ip
+```
+
+Install required software:
 
 ```bash
 # Update system
-sudo apt update && sudo apt upgrade -y
+apt update && apt upgrade -y
 
 # Install Docker
 curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
 
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# Install Docker Compose (latest version)
+apt install -y jq
+COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
 
-# Logout and login again for docker group to take effect
-exit
+# Verify installations
+docker --version
+docker-compose --version
 ```
 
-## Step 2: DNS Configuration (2 minutes)
+## Step 3: Google OAuth Credentials Setup
 
-### Option A: Using Cloudflare (Recommended)
-See [Cloudflare Setup Guide](./CLOUDFLARE_SETUP.md) for detailed instructions on:
-- Setting up Cloudflare proxy with DDoS protection
-- Configuring Origin Certificates for SSL
-- Enabling Full SSL mode for end-to-end encryption
+This is required for user authentication and Google Calendar access.
 
-### Option B: Direct DNS
-In your DNS provider, create these A records:
+1. **Go to [Google Cloud Console](https://console.cloud.google.com)**
 
-```
-@        A    <your-server-ip>    # relayforge.xyz
-api      A    <your-server-ip>    # api.relayforge.xyz
-```
+2. **Create a new project** (or select existing):
+   - Click "Select a project" → "New Project"
+   - Name it (e.g., "RelayForge")
+   - Click "Create"
 
-## Step 3: Google OAuth Setup (2 minutes)
+3. **Enable required APIs**:
+   - Go to "APIs & Services" → "Library"
+   - Search and enable:
+     - Google Calendar API
+     - Google+ API (for user profile)
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable Google Calendar API
-4. Create OAuth 2.0 credentials:
-   - Authorized redirect URI: `https://api.relayforge.xyz/oauth/google/callback`
-   - Copy Client ID and Client Secret
+4. **Configure OAuth consent screen**:
+   - Go to "APIs & Services" → "OAuth consent screen"
+   - Choose "External" user type
+   - Fill in required fields:
+     - App name: RelayForge
+     - User support email: your-email@domain.com
+     - Authorized domains: yourdomain.com
+     - Developer contact: your-email@domain.com
+   - Add scopes:
+     - `../auth/userinfo.email`
+     - `../auth/userinfo.profile`
+     - `../auth/calendar`
+   - Add test users if in testing mode
 
-## Step 4: Deploy RelayForge (5 minutes)
+5. **Create OAuth 2.0 credentials**:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Application type: "Web application"
+   - Name: "RelayForge Web Client"
+   - Authorized redirect URIs (replace with your domain):
+     - For staging: `https://yourdomain.com/oauth/google/callback`
+     - For production: `https://yourdomain.com/oauth/google/callback`
+   - Click "Create"
 
-### Automated Setup (Recommended)
+6. **Save your credentials**:
+   ```
+   GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
+   ```
+   Keep these safe - you'll need them in Step 5
+
+## Step 4: SSL Certificate Setup
+
+SSL is required for HTTPS. Choose one option:
+
+### Option A: Cloudflare Origin Certificate (Recommended)
+
+1. **Generate Origin Certificate**:
+   - Go to Cloudflare Dashboard → SSL/TLS → Origin Server
+   - Click "Create Certificate"
+   - Keep RSA selected
+   - Hostnames: `*.yourdomain.com, yourdomain.com`
+   - Certificate validity: 15 years
+   - Click "Create"
+
+2. **Save certificates on your VPS**:
+   ```bash
+   # On your VPS, create SSL directory
+   mkdir -p /opt/relayforge/nginx/ssl
+   cd /opt/relayforge/nginx/ssl
+   
+   # Create certificate file
+   cat > cloudflare-origin.pem << 'EOF'
+   -----BEGIN CERTIFICATE-----
+   [Paste your certificate content here]
+   -----END CERTIFICATE-----
+   EOF
+   
+   # Create private key file
+   cat > cloudflare-origin-key.pem << 'EOF'
+   -----BEGIN PRIVATE KEY-----
+   [Paste your private key content here]
+   -----END PRIVATE KEY-----
+   EOF
+   
+   # Set proper permissions
+   chmod 600 *
+   ```
+
+3. **Configure Cloudflare SSL mode**:
+   - Go to SSL/TLS → Overview
+   - Set encryption mode to "Full" or "Full (strict)"
+
+### Option B: Let's Encrypt (Free SSL)
 
 ```bash
-# For staging environment (builds from source)
-curl -sSL https://raw.githubusercontent.com/tianshanghong/relayforge/main/scripts/setup-vps.sh | bash -s staging yourdomain.com
+# Install certbot
+apt install certbot -y
 
-# For production environment (uses pre-built images)
-curl -sSL https://raw.githubusercontent.com/tianshanghong/relayforge/main/scripts/setup-vps.sh | bash -s production yourdomain.com
+# Stop any services using port 80
+docker-compose down
+
+# Generate certificate
+certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
+
+# Create symlinks for nginx
+mkdir -p /opt/relayforge/nginx/ssl
+ln -s /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/relayforge/nginx/ssl/cloudflare-origin.pem
+ln -s /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/relayforge/nginx/ssl/cloudflare-origin-key.pem
 ```
 
-### Manual Setup
+### Option C: Self-Signed (Development Only)
 
 ```bash
-# Clone the repository
+mkdir -p /opt/relayforge/nginx/ssl
+cd /opt/relayforge/nginx/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout cloudflare-origin-key.pem \
+  -out cloudflare-origin.pem \
+  -subj "/CN=yourdomain.com"
+chmod 600 *
+```
+
+## Step 5: Deploy RelayForge
+
+### Option A: Automated Setup (Easiest)
+
+```bash
+# Clone repository first
+cd /opt
+git clone https://github.com/tianshanghong/relayforge.git
+cd relayforge
+
+# Run setup script
+# For staging (builds from source code):
+./scripts/setup-vps.sh staging yourdomain.com
+
+# For production (uses pre-built images):
+./scripts/setup-vps.sh production yourdomain.com
+```
+
+The script will:
+- Generate all security keys automatically
+- Create .env file with proper configuration
+- Set up directory structure
+- Display deployment commands
+
+### Option B: Manual Setup (More Control)
+
+```bash
+# Clone repository
+cd /opt
 git clone https://github.com/tianshanghong/relayforge.git
 cd relayforge
 
 # Copy environment template
-cp .env.production.example .env  # or .env.staging.example for staging
+cp .env.staging.example .env
+```
 
-# Edit .env file and add your credentials
+#### Configure Environment Variables
+
+Edit the `.env` file with your settings:
+
+```bash
 nano .env
 ```
 
-Required environment variables:
+**Required variables to configure:**
+
 ```env
-# Database
-POSTGRES_PASSWORD=<generate-strong-password>
+# Environment (use 'production' for both staging and production)
+NODE_ENV=production
 
-# Security Keys (generate with: openssl rand -hex 32)
-ENCRYPTION_KEY=<64-char-hex-string>
-JWT_SECRET=<random-string>
-COOKIE_SECRET=<random-string>
-ADMIN_KEY=<random-string>
-INTERNAL_API_KEY=<random-string>
+# Database - Generate strong password
+POSTGRES_PASSWORD=your-secure-database-password-here
+POSTGRES_DB=relayforge_staging  # or relayforge for production
 
-# Google OAuth
-GOOGLE_CLIENT_ID=<your-client-id>
-GOOGLE_CLIENT_SECRET=<your-client-secret>
+# Security Keys - MUST generate unique keys for each!
+# Generate each with: openssl rand -hex 32
+ENCRYPTION_KEY=  # 64 characters hex (use: openssl rand -hex 32)
+JWT_SECRET=      # 32+ characters (use: openssl rand -hex 32)
+COOKIE_SECRET=   # 32+ characters (use: openssl rand -hex 32)
+ADMIN_KEY=       # 32+ characters (use: openssl rand -hex 32)
+INTERNAL_API_KEY=# 32+ characters (use: openssl rand -hex 32)
+
+# Google OAuth - From Step 3
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-secret-here
+
+# Domain Configuration - Update with your domain
+DOMAIN_NAME=yourdomain.com
+FRONTEND_URL=https://yourdomain.com
+OAUTH_SERVICE_URL=https://yourdomain.com
+MCP_BASE_URL=https://yourdomain.com
+GOOGLE_REDIRECT_URI=https://yourdomain.com/oauth/google/callback
+ALLOWED_ORIGINS=https://yourdomain.com
+
+# Frontend Configuration
+VITE_API_BASE_URL=https://yourdomain.com
+VITE_OAUTH_SERVICE_URL=https://yourdomain.com
 ```
 
-Continue deployment:
+**Generate security keys quickly:**
+
 ```bash
-# For STAGING (builds from source)
+# Generate all keys at once
+echo "ENCRYPTION_KEY=$(openssl rand -hex 32)"
+echo "JWT_SECRET=$(openssl rand -hex 32)"
+echo "COOKIE_SECRET=$(openssl rand -hex 32)"
+echo "ADMIN_KEY=$(openssl rand -hex 32)"
+echo "INTERNAL_API_KEY=$(openssl rand -hex 32)"
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+```
+
+Copy the output and update your .env file.
+
+## Step 6: Start Services
+
+```bash
+# For STAGING (builds from source code)
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
-# For PRODUCTION (uses pre-built images)
+# For PRODUCTION (uses pre-built Docker images)
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-# Run database migrations
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
-
-# For SSL setup, see Step 2 (Cloudflare) or use Let's Encrypt
+# Check service status
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
 ```
 
-## Step 5: Verify Deployment
+All services should show as "Up" and healthy.
 
-1. Visit https://relayforge.xyz - you should see the landing page
-2. Click "Login with Google" to test OAuth
-3. Create an MCP token
-4. Configure your Claude/Cursor with the MCP URL and token
+## Step 7: Run Database Migrations
+
+```bash
+# Run migrations to set up database schema
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
+
+# You should see:
+# "All migrations have been successfully applied."
+```
+
+## Step 8: Verify Deployment
+
+1. **Check services are running:**
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
+   ```
+   All should show "healthy" status.
+
+2. **Check logs for errors:**
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+   ```
+
+3. **Test website access:**
+   - Open browser to: https://yourdomain.com
+   - You should see the RelayForge landing page
+   - Click "Login with Google" to test OAuth
+
+4. **Test API health:**
+   ```bash
+   curl https://yourdomain.com/health
+   ```
+
 
 ## Common Commands
 
@@ -178,25 +408,117 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 Both environments use the same `docker-compose.prod.yml` configuration file.
 
-## Troubleshooting
+## Troubleshooting Guide
 
-### Services not starting
-- Check logs: `docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs`
-- Verify environment variables in `.env`
-- Ensure ports 80 and 443 are not in use
-- Check INTERNAL_API_KEY is set for mcp-gateway
+### Service Won't Start
 
-### SSL certificate issues
-- **Using Cloudflare:** See [Cloudflare Setup Guide](./CLOUDFLARE_SETUP.md) troubleshooting section
-- **Using Let's Encrypt:** 
-  - Wait for DNS propagation (can take up to 48 hours)
-  - Check DNS records: `dig relayforge.xyz`
-  - Ensure port 80 is accessible for ACME challenge
+**oauth-service fails with "Invalid enum value":**
+```bash
+# Check NODE_ENV value
+grep NODE_ENV .env
+# Must be 'production', not 'staging'
+sed -i 's/NODE_ENV=.*/NODE_ENV=production/' .env
+docker-compose restart oauth-service
+```
 
-### OAuth not working
-- Verify redirect URI in Google Cloud Console matches exactly
-- Check FRONTEND_URL in environment variables
-- Look for errors in oauth-service logs
+**mcp-gateway fails with "OAuth configuration required":**
+```bash
+# Check required variables
+grep -E "INTERNAL_API_KEY|OAUTH_SERVICE_URL" .env
+# Both must be set, generate if missing:
+echo "INTERNAL_API_KEY=$(openssl rand -hex 32)" >> .env
+docker-compose restart mcp-gateway
+```
+
+**nginx fails with SSL certificate error:**
+```bash
+# Check certificates exist
+ls -la nginx/ssl/
+# If missing, see Step 4 for SSL setup
+# For quick testing, use self-signed:
+cd nginx/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout cloudflare-origin-key.pem \
+  -out cloudflare-origin.pem \
+  -subj "/CN=yourdomain.com"
+chmod 600 *
+docker-compose restart nginx
+```
+
+### Database Issues
+
+**"relation does not exist" errors:**
+```bash
+# Run migrations
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
+```
+
+**Cannot connect to database:**
+```bash
+# Check postgres is healthy
+docker-compose ps postgres
+# Check DATABASE_URL in .env
+grep DATABASE_URL .env
+```
+
+### OAuth Login Issues
+
+**"Redirect URI mismatch" error:**
+1. Check Google Cloud Console redirect URI matches exactly
+2. Common mistake: missing/extra trailing slash
+3. Verify in .env:
+   ```bash
+   grep GOOGLE_REDIRECT_URI .env
+   # Should match Google Console exactly
+   ```
+
+**"Invalid client" error:**
+```bash
+# Verify credentials
+grep -E "GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET" .env
+# Must match Google Cloud Console values exactly
+```
+
+### SSL/HTTPS Issues
+
+**Cloudflare "SSL handshake failed":**
+1. Check SSL mode is "Full" or "Full (strict)" in Cloudflare
+2. Verify certificates are properly formatted
+3. Check nginx logs:
+   ```bash
+   docker-compose logs nginx
+   ```
+
+**Let's Encrypt rate limits:**
+- Use staging environment for testing
+- Wait 1 hour if rate limited
+- Consider using Cloudflare instead
+
+### General Debugging
+
+**View all logs:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+```
+
+**View specific service logs:**
+```bash
+docker-compose logs oauth-service -f
+docker-compose logs mcp-gateway -f
+docker-compose logs nginx -f
+```
+
+**Check container health:**
+```bash
+docker-compose ps
+# All should show "healthy" or "Up"
+```
+
+**Restart everything:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
 
 ## Support
 
