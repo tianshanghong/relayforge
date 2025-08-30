@@ -1,0 +1,50 @@
+# Staging Environment Configuration (production-like with SSL)
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# This is for the staging server at relayforge.dev
+
+services:
+  # OAuth Service - use local build for testing latest changes
+  oauth-service:
+    build:
+      context: .
+      dockerfile: apps/oauth-service/Dockerfile
+    environment:
+      NODE_ENV: production
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://relayforge.dev/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-https://relayforge.dev}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://relayforge.dev}
+
+  # MCP Gateway - use local build for testing latest changes
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
+    environment:
+      NODE_ENV: production
+      MCP_BASE_URL: ${MCP_BASE_URL:-https://relayforge.dev}
+      OAUTH_SERVICE_URL: ${OAUTH_SERVICE_URL:-https://relayforge.dev}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+
+  # Frontend - use local build for testing latest changes
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://relayforge.dev}
+        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-https://relayforge.dev}
+
+  # Nginx with SSL support
+  nginx:
+    image: nginx:stable
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - oauth-service
+      - mcp-gateway
