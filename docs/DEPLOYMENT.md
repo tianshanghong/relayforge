@@ -73,13 +73,25 @@ api      A    <your-server-ip>    # api.relayforge.xyz
 
 ## Step 4: Deploy RelayForge (5 minutes)
 
+### Automated Setup (Recommended)
+
+```bash
+# For staging environment (builds from source)
+curl -sSL https://raw.githubusercontent.com/tianshanghong/relayforge/main/scripts/setup-vps.sh | bash -s staging yourdomain.com
+
+# For production environment (uses pre-built images)
+curl -sSL https://raw.githubusercontent.com/tianshanghong/relayforge/main/scripts/setup-vps.sh | bash -s production yourdomain.com
+```
+
+### Manual Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/tianshanghong/relayforge.git
 cd relayforge
 
 # Copy environment template
-cp .env.production.example .env
+cp .env.production.example .env  # or .env.staging.example for staging
 
 # Edit .env file and add your credentials
 nano .env
@@ -95,6 +107,7 @@ ENCRYPTION_KEY=<64-char-hex-string>
 JWT_SECRET=<random-string>
 COOKIE_SECRET=<random-string>
 ADMIN_KEY=<random-string>
+INTERNAL_API_KEY=<random-string>
 
 # Google OAuth
 GOOGLE_CLIENT_ID=<your-client-id>
@@ -103,15 +116,17 @@ GOOGLE_CLIENT_SECRET=<your-client-secret>
 
 Continue deployment:
 ```bash
-# Deploy services
-docker-compose -f docker-compose.prod.yml up -d
+# For STAGING (builds from source)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
-# For SSL setup, choose one:
-# Option A: Cloudflare (recommended) - see docs/CLOUDFLARE_SETUP.md
-./scripts/setup-cloudflare-ssl.sh
+# For PRODUCTION (uses pre-built images)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-# Option B: Let's Encrypt (if not using Cloudflare)
-# (Let's Encrypt setup coming soon)
+# Run database migrations
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml run --rm db-migrate
+
+# For SSL setup, see Step 2 (Cloudflare) or use Let's Encrypt
 ```
 
 ## Step 5: Verify Deployment
@@ -125,30 +140,51 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```bash
 # View logs
-./scripts/deployment/logs.sh
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
 
-# Update to latest version
-./scripts/deployment/update.sh
+# Update staging (rebuild from source)
+git pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Update production (pull new images)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Check service status
-docker-compose -f docker-compose.prod.yml ps
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
 
 # Restart a service
-docker-compose -f docker-compose.prod.yml restart oauth-service
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart oauth-service
 
 # Stop all services
-docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 
-# Start all services
-docker-compose -f docker-compose.prod.yml up -d
+# Start all services (staging)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Start all services (production)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
+
+## Staging vs Production
+
+| Aspect | Staging | Production |
+|--------|---------|------------|
+| **Docker Images** | Built from source with `--build` | Pre-built from GitHub registry |
+| **Purpose** | Test latest code changes | Stable, tested releases |
+| **Deployment** | `up -d --build` | `pull` then `up -d` |
+| **Domain** | staging.yourdomain.com | yourdomain.com |
+| **Database** | relayforge_staging | relayforge |
+
+Both environments use the same `docker-compose.prod.yml` configuration file.
 
 ## Troubleshooting
 
 ### Services not starting
-- Check logs: `docker-compose -f docker-compose.prod.yml logs`
+- Check logs: `docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs`
 - Verify environment variables in `.env`
 - Ensure ports 80 and 443 are not in use
+- Check INTERNAL_API_KEY is set for mcp-gateway
 
 ### SSL certificate issues
 - **Using Cloudflare:** See [Cloudflare Setup Guide](./CLOUDFLARE_SETUP.md) troubleshooting section
