@@ -111,8 +111,12 @@ if [ ! -f ".env" ]; then
     DB_PASSWORD=$(openssl rand -hex 16)
     sed -i "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${DB_PASSWORD}/" .env
     
-    # Set environment and domain
-    sed -i "s/NODE_ENV=.*/NODE_ENV=${ENVIRONMENT}/" .env
+    # Set environment and domain (staging uses production NODE_ENV)
+    if [ "$ENVIRONMENT" == "staging" ]; then
+        sed -i "s/NODE_ENV=.*/NODE_ENV=production/" .env
+    else
+        sed -i "s/NODE_ENV=.*/NODE_ENV=production/" .env
+    fi
     sed -i "s|DOMAIN_NAME=.*|DOMAIN_NAME=${DOMAIN}|" .env
     sed -i "s|FRONTEND_URL=.*|FRONTEND_URL=https://${DOMAIN}|" .env
     sed -i "s|MCP_BASE_URL=.*|MCP_BASE_URL=https://${DOMAIN}|" .env
