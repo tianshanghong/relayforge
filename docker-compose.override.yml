@@ -5,7 +5,7 @@ services:
   # PostgreSQL Database
   postgres:
     ports:
-      - "5432:5432"  # Expose for local development tools
+      - "127.0.0.1:5432:5432"  # Only accessible from localhost
 
   # OAuth Service
   oauth-service:
@@ -13,7 +13,7 @@ services:
       context: .
       dockerfile: apps/oauth-service/Dockerfile
     ports:
-      - "3002:3002"  # Direct access for debugging
+      - "127.0.0.1:3002:3002"  # Only accessible from localhost
     volumes:
       - ./apps/oauth-service:/app/apps/oauth-service
       - ./packages:/app/packages
@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: apps/mcp-gateway/Dockerfile
     ports:
-      - "3001:3001"  # Direct access for debugging
+      - "127.0.0.1:3001:3001"  # Only accessible from localhost
     volumes:
       - ./apps/mcp-gateway:/app/apps/mcp-gateway
       - ./packages:/app/packages
@@ -50,7 +50,7 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002}
         VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-http://localhost:3002}
     ports:
-      - "5173:80"  # Development frontend port
+      - "127.0.0.1:5173:80"  # Only accessible from localhost
     volumes:
       - ./apps/frontend:/app/apps/frontend
       - /app/node_modules
@@ -62,7 +62,7 @@ services:
   nginx:
     image: nginx:stable
     ports:
-      - "8080:80"  # Development nginx port
+      - "8080:80"  # Public access for development testing
     volumes:
       - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
