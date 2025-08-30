@@ -100,12 +100,27 @@ if [ ! -f ".env" ]; then
     ADMIN_KEY=$(openssl rand -hex 32)
     INTERNAL_API_KEY=$(openssl rand -hex 32)
     
-    # Update .env with generated keys
-    sed -i "s/ENCRYPTION_KEY=.*/ENCRYPTION_KEY=${ENCRYPTION_KEY}/" .env
-    sed -i "s/JWT_SECRET=.*/JWT_SECRET=${JWT_SECRET}/" .env
-    sed -i "s/COOKIE_SECRET=.*/COOKIE_SECRET=${COOKIE_SECRET}/" .env
-    sed -i "s/ADMIN_KEY=.*/ADMIN_KEY=${ADMIN_KEY}/" .env
-    sed -i "s/INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${INTERNAL_API_KEY}/" .env
+    # Update .env with generated keys (with error handling)
+    if ! sed -i "s/ENCRYPTION_KEY=.*/ENCRYPTION_KEY=${ENCRYPTION_KEY}/" .env; then
+        echo "❌ Failed to update ENCRYPTION_KEY in .env"
+        exit 1
+    fi
+    if ! sed -i "s/JWT_SECRET=.*/JWT_SECRET=${JWT_SECRET}/" .env; then
+        echo "❌ Failed to update JWT_SECRET in .env"
+        exit 1
+    fi
+    if ! sed -i "s/COOKIE_SECRET=.*/COOKIE_SECRET=${COOKIE_SECRET}/" .env; then
+        echo "❌ Failed to update COOKIE_SECRET in .env"
+        exit 1
+    fi
+    if ! sed -i "s/ADMIN_KEY=.*/ADMIN_KEY=${ADMIN_KEY}/" .env; then
+        echo "❌ Failed to update ADMIN_KEY in .env"
+        exit 1
+    fi
+    if ! sed -i "s/INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${INTERNAL_API_KEY}/" .env; then
+        echo "❌ Failed to update INTERNAL_API_KEY in .env"
+        exit 1
+    fi
     
     # Generate secure database password
     DB_PASSWORD=$(openssl rand -hex 16)
@@ -154,9 +169,15 @@ echo "   Option A - Cloudflare Origin Certificate:"
 echo "   ------------------------------------------"
 echo "   1. Go to Cloudflare Dashboard → SSL/TLS → Origin Server"
 echo "   2. Create certificate for: *.${DOMAIN}, ${DOMAIN}"
-echo "   3. Save certificates:"
-echo "      echo 'PASTE_CERTIFICATE' > /opt/relayforge/nginx/ssl/cloudflare-origin.pem"
-echo "      echo 'PASTE_KEY' > /opt/relayforge/nginx/ssl/cloudflare-origin-key.pem"
+echo "   3. Save certificates securely (avoid shell history):"
+echo "      # For certificate:"
+echo "      cat > /opt/relayforge/nginx/ssl/cloudflare-origin.pem"
+echo "      # (Paste certificate content, then press Ctrl+D)"
+echo "      "
+echo "      # For private key:"
+echo "      cat > /opt/relayforge/nginx/ssl/cloudflare-origin-key.pem"
+echo "      # (Paste private key content, then press Ctrl+D)"
+echo "      "
 echo "      chmod 600 /opt/relayforge/nginx/ssl/*"
 echo "   4. Set Cloudflare SSL/TLS to 'Full' or 'Full (strict)'"
 echo ""
@@ -165,7 +186,9 @@ echo "   -------------------------"
 echo "   Will be configured after initial deployment"
 echo ""
 echo "3️⃣  DNS Configuration:"
-echo "   - Point ${DOMAIN} to: $(curl -s ifconfig.me)"
+# Get IP address with error handling
+SERVER_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || echo "your-server-ip")
+echo "   - Point ${DOMAIN} to: ${SERVER_IP}"
 echo "   - If using Cloudflare, enable proxy (orange cloud)"
 echo ""
 echo "🚀 Deployment Commands:"
