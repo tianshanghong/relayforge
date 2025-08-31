@@ -86,6 +86,9 @@ services:
 
   # Database migration helper
   db-migrate:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
     image: ghcr.io/tianshanghong/relayforge/mcp-gateway:latest
     depends_on:
       postgres:

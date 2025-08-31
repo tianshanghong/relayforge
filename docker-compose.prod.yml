@@ -1,16 +1,30 @@
-# Production overrides - minimal configuration
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-# Environment variables should be set in .env or .env.production
+# Production/Staging overrides
+# For PRODUCTION: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# For STAGING: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Environment variables should be set in .env
 
 services:
-  # Use pre-built images from GitHub Container Registry
+  # For staging: builds from source with --build flag
+  # For production: uses pre-built images from GitHub Container Registry
   oauth-service:
+    build:
+      context: .
+      dockerfile: apps/oauth-service/Dockerfile
     image: ghcr.io/tianshanghong/relayforge/oauth-service:latest
 
   mcp-gateway:
+    build:
+      context: .
+      dockerfile: apps/mcp-gateway/Dockerfile
     image: ghcr.io/tianshanghong/relayforge/mcp-gateway:latest
 
   frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.relayforge.xyz}
+        VITE_OAUTH_SERVICE_URL: ${VITE_OAUTH_SERVICE_URL:-https://api.relayforge.xyz}
     image: ghcr.io/tianshanghong/relayforge/frontend:latest
 
   # Production nginx with SSL
