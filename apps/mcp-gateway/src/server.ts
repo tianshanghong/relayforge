@@ -7,6 +7,7 @@ import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world.js';
 import { GoogleCalendarService } from './services/google-calendar.service.js';
 import { CoinbaseService } from './services/coinbase.service.js';
+import { getService } from '@relayforge/shared';
 import { TokenValidator } from './auth/token-validator.js';
 import { BillingService } from './services/billing.service.js';
 import { ServiceRouter } from './routing/service-router.js';
@@ -43,36 +44,37 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
   fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
 }
 
-// Register Google Calendar service
-serviceRouter.registerService({
-  name: 'Google Calendar', 
-  prefix: 'google-calendar',
-  requiresAuth: true,
-  adapter: new MCPHttpAdapter(new GoogleCalendarService()),
-  authConfig: {
-    type: 'oauth',
-    provider: 'google'
-  }
-});
+// Map of service implementations
+const serviceImplementations: Record<string, any> = {
+  'google-calendar': GoogleCalendarService,
+  'coinbase': CoinbaseService,
+  'hello-world': HelloWorldMCPServer
+};
 
-// Register Coinbase service
-serviceRouter.registerService({
-  name: 'Coinbase',
-  prefix: 'coinbase',
-  requiresAuth: true,
-  adapter: new MCPHttpAdapter(new CoinbaseService()),
-  authConfig: {
-    type: 'api-key'
+// Register all active services dynamically
+for (const [serviceId, ServiceClass] of Object.entries(serviceImplementations)) {
+  const metadata = getService(serviceId);
+  
+  if (metadata && metadata.active) {
+    const config: any = {
+      name: metadata.displayName,
+      prefix: metadata.id,
+      requiresAuth: metadata.authType !== 'none',
+      adapter: new MCPHttpAdapter(new ServiceClass())
+    };
+    
+    // Add auth config if service requires authentication
+    if (metadata.authType !== 'none') {
+      config.authConfig = {
+        type: metadata.authType,
+        ...(metadata.oauthProvider && { provider: metadata.oauthProvider })
+      };
+    }
+    
+    serviceRouter.registerService(config);
+    fastify.log.info(`Registered service: ${metadata.displayName} (${serviceId})`);
   }
-});
-
-// Register hello-world for testing
-serviceRouter.registerService({
-  name: 'Hello World',
-  prefix: 'hello-world',
-  requiresAuth: false,
-  adapter: new MCPHttpAdapter(new HelloWorldMCPServer()),
-});
+}
 
 // Health check endpoint
 fastify.get('/health', async () => {

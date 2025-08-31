@@ -1,13 +1,8 @@
 import { API_BASE_URL, getWebSocketUrl } from '../config'
-
-interface MCPServer {
-  name: string
-  url: string
-  websocket_url: string
-}
+import { ServiceMetadata, formatPrice } from '@relayforge/shared'
 
 interface ServerCardProps {
-  server: MCPServer
+  server: ServiceMetadata
 }
 
 export function ServerCard({ server }: ServerCardProps) {
@@ -15,23 +10,39 @@ export function ServerCard({ server }: ServerCardProps) {
     navigator.clipboard.writeText(text)
   }
 
-  const serverUrl = `${API_BASE_URL}${server.url}`
-  const wsUrl = `${getWebSocketUrl(API_BASE_URL)}${server.websocket_url}`
+  // These will be replaced with actual user URLs when authenticated
+  const serverUrl = `${API_BASE_URL}/mcp/u/{your-slug}`
+  const wsUrl = `${getWebSocketUrl(API_BASE_URL)}/mcp/u/{your-slug}/ws`
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-semibold text-gray-900 capitalize">
-          {server.name.replace(/-/g, ' ')}
+        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <span className="text-2xl">{server.icon}</span>
+          {server.displayName}
         </h3>
-        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-          Active
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+            {server.category}
+          </span>
+          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+            Active
+          </span>
+        </div>
       </div>
       
-      <p className="text-gray-600 mb-6">
-        {getServerDescription(server.name)}
+      <p className="text-gray-600 mb-4">
+        {server.description}
       </p>
+
+      <div className="mb-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Features:</h4>
+        <ul className="text-sm text-gray-600 space-y-1">
+          {server.features.slice(0, 3).map((feature, idx) => (
+            <li key={idx}>• {feature}</li>
+          ))}
+        </ul>
+      </div>
 
       <div className="space-y-3">
         <div>
@@ -73,21 +84,10 @@ export function ServerCard({ server }: ServerCardProps) {
 
       <div className="mt-6 pt-4 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>Status: Healthy</span>
-          <span>Latency: ~50ms</span>
+          <span>Price: {formatPrice(server.pricePerCall)}</span>
+          <span>Auth: {server.authType === 'none' ? 'Not required' : server.authType.toUpperCase()}</span>
         </div>
       </div>
     </div>
   )
-}
-
-function getServerDescription(name: string): string {
-  const descriptions: Record<string, string> = {
-    'hello-world': 'A simple demo server that responds with greetings. Perfect for testing your MCP client setup.',
-    'google-calendar': 'Access and manage your Google Calendar events, create meetings, and check availability.',
-    'slack': 'Send messages, read channels, and interact with your Slack workspace.',
-    'github': 'Browse repositories, create issues, and manage GitHub resources.',
-  }
-  
-  return descriptions[name] || 'A powerful MCP server for enhanced AI agent capabilities.'
 }

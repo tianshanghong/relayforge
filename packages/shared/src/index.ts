@@ -1,3 +1,6 @@
+// Export service metadata
+export * from './services/index.js';
+
 export interface MCPMessage {
   jsonrpc: "2.0";
   id?: string | number;
