@@ -145,8 +145,8 @@ This is required for user authentication and Google Calendar access.
    - Application type: "Web application"
    - Name: "RelayForge Web Client"
    - Authorized redirect URIs (replace with your domain):
-     - For staging: `https://yourdomain.com/oauth/google/callback`
-     - For production: `https://yourdomain.com/oauth/google/callback`
+     - For staging: `https://api.yourdomain.com/oauth/google/callback`
+     - For production: `https://api.yourdomain.com/oauth/google/callback`
    - Click "Create"
 
 6. **Save your credentials**:
@@ -299,7 +299,7 @@ DOMAIN_NAME=yourdomain.com
 FRONTEND_URL=https://yourdomain.com
 OAUTH_SERVICE_URL=https://yourdomain.com
 MCP_BASE_URL=https://yourdomain.com
-GOOGLE_REDIRECT_URI=https://yourdomain.com/oauth/google/callback
+GOOGLE_REDIRECT_URI=https://api.yourdomain.com/oauth/google/callback
 ALLOWED_ORIGINS=https://yourdomain.com
 
 # Frontend Configuration

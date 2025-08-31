@@ -138,7 +138,7 @@ if [ ! -f ".env" ]; then
     sed -i "s|OAUTH_SERVICE_URL=.*|OAUTH_SERVICE_URL=https://${DOMAIN}|" .env
     sed -i "s|VITE_API_BASE_URL=.*|VITE_API_BASE_URL=https://${DOMAIN}|" .env
     sed -i "s|VITE_OAUTH_SERVICE_URL=.*|VITE_OAUTH_SERVICE_URL=https://${DOMAIN}|" .env
-    sed -i "s|GOOGLE_REDIRECT_URI=.*|GOOGLE_REDIRECT_URI=https://${DOMAIN}/oauth/google/callback|" .env
+    sed -i "s|GOOGLE_REDIRECT_URI=.*|GOOGLE_REDIRECT_URI=https://api.${DOMAIN}/oauth/google/callback|" .env
     sed -i "s|ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://${DOMAIN}|" .env
     
     echo "✅ Generated secure keys and configured for ${DOMAIN}"
@@ -161,7 +161,7 @@ echo ""
 echo "1️⃣  Google OAuth Setup:"
 echo "   - Edit /opt/relayforge/.env"
 echo "   - Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"
-echo "   - Ensure redirect URI is: https://${DOMAIN}/oauth/google/callback"
+echo "   - Ensure redirect URI is: https://api.${DOMAIN}/oauth/google/callback"
 echo ""
 echo "2️⃣  SSL Certificate Setup (Choose one):"
 echo ""
