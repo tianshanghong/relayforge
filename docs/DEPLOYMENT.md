@@ -325,16 +325,10 @@ Copy the output and update your .env file.
 
 ```bash
 # For STAGING (builds from source code)
-# First, build frontend with correct API URL
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build \
-  --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
-  --build-arg VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com \
-  frontend
-
-# Then build and start all services
+# The build args are now configured in docker-compose.prod.yml and use .env values
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
-# For PRODUCTION (uses pre-built Docker images)
+# For PRODUCTION (uses pre-built Docker images from ghcr.io)
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
