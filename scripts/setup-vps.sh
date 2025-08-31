@@ -153,10 +153,10 @@ if [ ! -f ".env" ]; then
     fi
     sed -i "s|DOMAIN_NAME=.*|DOMAIN_NAME=${DOMAIN}|" .env
     sed -i "s|FRONTEND_URL=.*|FRONTEND_URL=https://${DOMAIN}|" .env
-    sed -i "s|MCP_BASE_URL=.*|MCP_BASE_URL=https://${DOMAIN}|" .env
-    sed -i "s|OAUTH_SERVICE_URL=.*|OAUTH_SERVICE_URL=https://${DOMAIN}|" .env
-    sed -i "s|VITE_API_BASE_URL=.*|VITE_API_BASE_URL=https://${DOMAIN}|" .env
-    sed -i "s|VITE_OAUTH_SERVICE_URL=.*|VITE_OAUTH_SERVICE_URL=https://${DOMAIN}|" .env
+    sed -i "s|MCP_BASE_URL=.*|MCP_BASE_URL=https://api.${DOMAIN}|" .env
+    sed -i "s|OAUTH_SERVICE_URL=.*|OAUTH_SERVICE_URL=https://api.${DOMAIN}|" .env
+    sed -i "s|VITE_API_BASE_URL=.*|VITE_API_BASE_URL=https://api.${DOMAIN}|" .env
+    sed -i "s|VITE_OAUTH_SERVICE_URL=.*|VITE_OAUTH_SERVICE_URL=https://api.${DOMAIN}|" .env
     sed -i "s|GOOGLE_REDIRECT_URI=.*|GOOGLE_REDIRECT_URI=https://api.${DOMAIN}/oauth/google/callback|" .env
     sed -i "s|ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://${DOMAIN}|" .env
     
