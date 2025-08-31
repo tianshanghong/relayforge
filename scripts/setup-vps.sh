@@ -199,6 +199,13 @@ echo ""
 # Show appropriate docker-compose command
 if [ "$ENVIRONMENT" == "staging" ]; then
     echo "# Build from source and start services (staging):"
+    echo "# First, build frontend with correct API URL:"
+    echo "docker-compose -f docker-compose.yml -f docker-compose.prod.yml build \\"
+    echo "  --build-arg VITE_API_BASE_URL=https://api.${DOMAIN} \\"
+    echo "  --build-arg VITE_OAUTH_SERVICE_URL=https://api.${DOMAIN} \\"
+    echo "  frontend"
+    echo ""
+    echo "# Then build and start all services:"
     echo "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build"
     echo ""
     echo "# Run database migrations:"

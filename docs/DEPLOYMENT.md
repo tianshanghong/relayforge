@@ -19,7 +19,12 @@ nano .env  # Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
 mkdir -p nginx/ssl && cd nginx/ssl
 # Add your SSL certificates here
 
-# 5. Deploy
+# 5. Deploy (for staging)
+# Build frontend with correct API URL
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml build \
+  --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
+  --build-arg VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com \
+  frontend
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
 
@@ -320,6 +325,13 @@ Copy the output and update your .env file.
 
 ```bash
 # For STAGING (builds from source code)
+# First, build frontend with correct API URL
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml build \
+  --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
+  --build-arg VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com \
+  frontend
+
+# Then build and start all services
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 # For PRODUCTION (uses pre-built Docker images)
@@ -374,6 +386,12 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
 
 # Update staging (rebuild from source)
 git pull
+# Build frontend with correct API URL
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml build \
+  --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
+  --build-arg VITE_OAUTH_SERVICE_URL=https://api.yourdomain.com \
+  frontend
+# Build and restart all services
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 # Update production (pull new images)
