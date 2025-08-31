@@ -44,42 +44,36 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
   fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
 }
 
-// Register services from shared metadata
-const googleCalendarMeta = getService('google-calendar');
-if (googleCalendarMeta && googleCalendarMeta.active) {
-  serviceRouter.registerService({
-    name: googleCalendarMeta.displayName,
-    prefix: googleCalendarMeta.id,
-    requiresAuth: true,
-    adapter: new MCPHttpAdapter(new GoogleCalendarService()),
-    authConfig: {
-      type: googleCalendarMeta.authType,
-      provider: googleCalendarMeta.oauthProvider
-    }
-  });
-}
+// Map of service implementations
+const serviceImplementations: Record<string, any> = {
+  'google-calendar': GoogleCalendarService,
+  'coinbase': CoinbaseService,
+  'hello-world': HelloWorldMCPServer
+};
 
-const coinbaseMeta = getService('coinbase');
-if (coinbaseMeta && coinbaseMeta.active) {
-  serviceRouter.registerService({
-    name: coinbaseMeta.displayName,
-    prefix: coinbaseMeta.id,
-    requiresAuth: true,
-    adapter: new MCPHttpAdapter(new CoinbaseService()),
-    authConfig: {
-      type: coinbaseMeta.authType
+// Register all active services dynamically
+for (const [serviceId, ServiceClass] of Object.entries(serviceImplementations)) {
+  const metadata = getService(serviceId);
+  
+  if (metadata && metadata.active) {
+    const config: any = {
+      name: metadata.displayName,
+      prefix: metadata.id,
+      requiresAuth: metadata.authType !== 'none',
+      adapter: new MCPHttpAdapter(new ServiceClass())
+    };
+    
+    // Add auth config if service requires authentication
+    if (metadata.authType !== 'none') {
+      config.authConfig = {
+        type: metadata.authType,
+        ...(metadata.oauthProvider && { provider: metadata.oauthProvider })
+      };
     }
-  });
-}
-
-const helloWorldMeta = getService('hello-world');
-if (helloWorldMeta && helloWorldMeta.active) {
-  serviceRouter.registerService({
-    name: helloWorldMeta.displayName,
-    prefix: helloWorldMeta.id,
-    requiresAuth: false,
-    adapter: new MCPHttpAdapter(new HelloWorldMCPServer()),
-  });
+    
+    serviceRouter.registerService(config);
+    fastify.log.info(`Registered service: ${metadata.displayName} (${serviceId})`);
+  }
 }
 
 // Health check endpoint
