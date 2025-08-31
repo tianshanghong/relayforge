@@ -14,9 +14,13 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@vitest/ui": "^3.2.4",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
   }
 }
