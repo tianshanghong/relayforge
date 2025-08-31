@@ -7,6 +7,7 @@ import { MCPHttpAdapter } from '@relayforge/mcp-adapter';
 import { HelloWorldMCPServer } from './servers/hello-world.js';
 import { GoogleCalendarService } from './services/google-calendar.service.js';
 import { CoinbaseService } from './services/coinbase.service.js';
+import { getService } from '@relayforge/shared';
 import { TokenValidator } from './auth/token-validator.js';
 import { BillingService } from './services/billing.service.js';
 import { ServiceRouter } from './routing/service-router.js';
@@ -43,36 +44,43 @@ if (process.env.OAUTH_SERVICE_URL && process.env.INTERNAL_API_KEY) {
   fastify.log.warn('OAuth client not configured. Set OAUTH_SERVICE_URL and INTERNAL_API_KEY for OAuth support.');
 }
 
-// Register Google Calendar service
-serviceRouter.registerService({
-  name: 'Google Calendar', 
-  prefix: 'google-calendar',
-  requiresAuth: true,
-  adapter: new MCPHttpAdapter(new GoogleCalendarService()),
-  authConfig: {
-    type: 'oauth',
-    provider: 'google'
-  }
-});
+// Register services from shared metadata
+const googleCalendarMeta = getService('google-calendar');
+if (googleCalendarMeta && googleCalendarMeta.active) {
+  serviceRouter.registerService({
+    name: googleCalendarMeta.displayName,
+    prefix: googleCalendarMeta.id,
+    requiresAuth: true,
+    adapter: new MCPHttpAdapter(new GoogleCalendarService()),
+    authConfig: {
+      type: googleCalendarMeta.authType,
+      provider: googleCalendarMeta.oauthProvider
+    }
+  });
+}
 
-// Register Coinbase service
-serviceRouter.registerService({
-  name: 'Coinbase',
-  prefix: 'coinbase',
-  requiresAuth: true,
-  adapter: new MCPHttpAdapter(new CoinbaseService()),
-  authConfig: {
-    type: 'api-key'
-  }
-});
+const coinbaseMeta = getService('coinbase');
+if (coinbaseMeta && coinbaseMeta.active) {
+  serviceRouter.registerService({
+    name: coinbaseMeta.displayName,
+    prefix: coinbaseMeta.id,
+    requiresAuth: true,
+    adapter: new MCPHttpAdapter(new CoinbaseService()),
+    authConfig: {
+      type: coinbaseMeta.authType
+    }
+  });
+}
 
-// Register hello-world for testing
-serviceRouter.registerService({
-  name: 'Hello World',
-  prefix: 'hello-world',
-  requiresAuth: false,
-  adapter: new MCPHttpAdapter(new HelloWorldMCPServer()),
-});
+const helloWorldMeta = getService('hello-world');
+if (helloWorldMeta && helloWorldMeta.active) {
+  serviceRouter.registerService({
+    name: helloWorldMeta.displayName,
+    prefix: helloWorldMeta.id,
+    requiresAuth: false,
+    adapter: new MCPHttpAdapter(new HelloWorldMCPServer()),
+  });
+}
 
 // Health check endpoint
 fastify.get('/health', async () => {

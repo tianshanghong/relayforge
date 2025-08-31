@@ -2,29 +2,16 @@ import { useState, useEffect } from 'react'
 import { ServerCard } from './components/ServerCard'
 import { Hero } from './components/Hero'
 import { AuthSection } from './components/AuthSection'
-import { API_BASE_URL, getApiUrl } from './config'
-
-interface MCPServer {
-  name: string
-  url: string
-  websocket_url: string
-}
+import { getActiveServices, ServiceMetadata } from '@relayforge/shared'
 
 function App() {
-  const [servers, setServers] = useState<MCPServer[]>([])
-  const [loading, setLoading] = useState(true)
+  const [servers, setServers] = useState<ServiceMetadata[]>([])
+  const [loading] = useState(false)
 
   useEffect(() => {
-    fetch(getApiUrl('/api/mcp/servers'))
-      .then(res => res.json())
-      .then(data => {
-        setServers(data.servers || [])
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('Failed to fetch servers:', err)
-        setLoading(false)
-      })
+    // Use shared metadata to display available services
+    const activeServices = getActiveServices()
+    setServers(activeServices)
   }, [])
 
   return (
@@ -48,7 +35,7 @@ function App() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {servers.map((server) => (
-                <ServerCard key={server.name} server={server} />
+                <ServerCard key={server.id} server={server} />
               ))}
             </div>
           )}
@@ -56,25 +43,35 @@ function App() {
 
         <section className="mt-16 bg-white rounded-lg shadow-lg p-8">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Start</h3>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <h4 className="font-semibold text-gray-800">For Claude Code:</h4>
-              <pre className="bg-gray-100 p-3 rounded text-sm mt-2 overflow-x-auto">
-                <code>{`# Add to your MCP config
-{
-  "mcpServers": {
-    "hello-world": {
-      "command": "curl",
-      "args": ["-X", "POST", "${API_BASE_URL}/mcp/hello-world"]
-    }
-  }
-}`}</code>
+              <h4 className="font-semibold text-gray-800 mb-2">For Claude Code:</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                After logging in and getting your MCP URL and token, add your RelayForge server:
+              </p>
+              <pre className="bg-gray-900 text-green-400 p-4 rounded text-sm overflow-x-auto">
+                <code>{`claude mcp add relayforge \\
+    https://api.relayforge.dev/mcp/u/your-slug \\
+    --transport http \\
+    --header "Authorization: Bearer mcp_live_xxxxxxxxxxxxx"`}</code>
               </pre>
+              <p className="text-xs text-gray-500 mt-2">
+                Replace 'your-slug' and token with your actual values from the account section above.
+              </p>
             </div>
+            
             <div>
-              <h4 className="font-semibold text-gray-800">For Cursor:</h4>
-              <pre className="bg-gray-100 p-3 rounded text-sm mt-2 overflow-x-auto">
-                <code>${API_BASE_URL}/mcp/hello-world</code>
+              <h4 className="font-semibold text-gray-800 mb-2">For API Key Services (like Coinbase):</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Add your API keys as additional headers:
+              </p>
+              <pre className="bg-gray-900 text-green-400 p-4 rounded text-sm overflow-x-auto">
+                <code>{`claude mcp add relayforge \\
+    https://api.relayforge.dev/mcp/u/your-slug \\
+    --transport http \\
+    --header "Authorization: Bearer mcp_live_xxxxxxxxxxxxx" \\
+    --header "X-Env-Coinbase-API-Key-Name: your-api-key-name" \\
+    --header "X-Env-Coinbase-API-Private-Key: -----BEGIN EC PRIVATE KEY-----\\n...\\n-----END EC PRIVATE KEY-----"`}</code>
               </pre>
             </div>
           </div>

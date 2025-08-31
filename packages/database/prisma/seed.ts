@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CryptoService } from '../src/crypto';
+import { SERVICE_REGISTRY } from '@relayforge/shared';
 
 const prisma = new PrismaClient();
 const crypto = new CryptoService();
@@ -7,29 +8,13 @@ const crypto = new CryptoService();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Seed service pricing
-  const services = [
-    // OAuth services
-    { service: 'google-calendar', pricePerCall: 2, category: 'oauth', active: true }, // MVP
-    { service: 'google-drive', pricePerCall: 3, category: 'oauth', active: false },
-    { service: 'google-gmail', pricePerCall: 2, category: 'oauth', active: false },
-    { service: 'github', pricePerCall: 1, category: 'oauth', active: false },
-    { service: 'slack', pricePerCall: 2, category: 'oauth', active: false },
-    { service: 'microsoft-graph', pricePerCall: 2, category: 'oauth', active: false },
-    { service: 'notion', pricePerCall: 3, category: 'oauth', active: false },
-    { service: 'linear', pricePerCall: 2, category: 'oauth', active: false },
-    
-    // Client-key services
-    { service: 'coinbase', pricePerCall: 1, category: 'api-key', active: true },
-    { service: 'openai', pricePerCall: 0.5, category: 'api-key', active: false },
-    { service: 'anthropic', pricePerCall: 0.5, category: 'api-key', active: false },
-    { service: 'stripe', pricePerCall: 1, category: 'api-key', active: false },
-    { service: 'sendgrid', pricePerCall: 0.5, category: 'api-key', active: false },
-    { service: 'twilio', pricePerCall: 1, category: 'api-key', active: false },
-    { service: 'sentry', pricePerCall: 0.5, category: 'api-key', active: false },
-    { service: 'datadog', pricePerCall: 1, category: 'api-key', active: false },
-    { service: 'pagerduty', pricePerCall: 1, category: 'api-key', active: false },
-  ];
+  // Seed service pricing from shared metadata
+  const services = Object.values(SERVICE_REGISTRY).map(service => ({
+    service: service.id,
+    pricePerCall: service.pricePerCall,
+    category: service.authType === 'none' ? 'free' : service.authType,
+    active: service.active,
+  }));
 
   for (const service of services) {
     await prisma.servicePricing.upsert({
@@ -48,7 +33,7 @@ async function main() {
     });
   }
 
-  console.log(`✅ Seeded ${services.length} service pricing entries`);
+  console.log(`✅ Seeded ${services.length} service pricing entries from shared metadata`);
 
   // Create test users (only in development)
   if (process.env.NODE_ENV !== 'production') {
