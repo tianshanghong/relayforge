@@ -2,21 +2,28 @@ import { useState, useEffect } from 'react'
 import { ServerCard } from './components/ServerCard'
 import { Hero } from './components/Hero'
 import { AuthSection } from './components/AuthSection'
+import { EnvironmentBanner, detectEnvironment } from './components/EnvironmentBanner'
 import { getActiveServices, ServiceMetadata } from '@relayforge/shared'
 
 function App() {
   const [servers, setServers] = useState<ServiceMetadata[]>([])
   const [loading] = useState(false)
+  const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
     // Use shared metadata to display available services
     const activeServices = getActiveServices()
     setServers(activeServices)
+    
+    // Check if we need to show environment banner
+    const environment = detectEnvironment()
+    setShowBanner(environment !== 'production')
   }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+      <EnvironmentBanner />
+      <div className={`container mx-auto px-4 py-8 ${showBanner ? 'pt-20' : ''}`}>
         <Hero />
         
         <section className="mt-16 max-w-2xl mx-auto">
