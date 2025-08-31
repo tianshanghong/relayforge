@@ -100,27 +100,46 @@ if [ ! -f ".env" ]; then
     ADMIN_KEY=$(openssl rand -hex 32)
     INTERNAL_API_KEY=$(openssl rand -hex 32)
     
-    # Update .env with generated keys (with error handling)
-    if ! sed -i "s/ENCRYPTION_KEY=.*/ENCRYPTION_KEY=${ENCRYPTION_KEY}/" .env; then
+    # Update .env with generated keys (safer method to handle special characters)
+    # Use awk for more robust replacement that handles special regex characters
+    cp .env .env.bak
+    
+    awk -v key="$ENCRYPTION_KEY" '/^ENCRYPTION_KEY=/ {print "ENCRYPTION_KEY=" key; next} {print}' .env > .env.tmp && mv .env.tmp .env
+    if [ $? -ne 0 ]; then
         echo "❌ Failed to update ENCRYPTION_KEY in .env"
+        mv .env.bak .env
         exit 1
     fi
-    if ! sed -i "s/JWT_SECRET=.*/JWT_SECRET=${JWT_SECRET}/" .env; then
+    
+    awk -v key="$JWT_SECRET" '/^JWT_SECRET=/ {print "JWT_SECRET=" key; next} {print}' .env > .env.tmp && mv .env.tmp .env
+    if [ $? -ne 0 ]; then
         echo "❌ Failed to update JWT_SECRET in .env"
+        mv .env.bak .env
         exit 1
     fi
-    if ! sed -i "s/COOKIE_SECRET=.*/COOKIE_SECRET=${COOKIE_SECRET}/" .env; then
+    
+    awk -v key="$COOKIE_SECRET" '/^COOKIE_SECRET=/ {print "COOKIE_SECRET=" key; next} {print}' .env > .env.tmp && mv .env.tmp .env
+    if [ $? -ne 0 ]; then
         echo "❌ Failed to update COOKIE_SECRET in .env"
+        mv .env.bak .env
         exit 1
     fi
-    if ! sed -i "s/ADMIN_KEY=.*/ADMIN_KEY=${ADMIN_KEY}/" .env; then
+    
+    awk -v key="$ADMIN_KEY" '/^ADMIN_KEY=/ {print "ADMIN_KEY=" key; next} {print}' .env > .env.tmp && mv .env.tmp .env
+    if [ $? -ne 0 ]; then
         echo "❌ Failed to update ADMIN_KEY in .env"
+        mv .env.bak .env
         exit 1
     fi
-    if ! sed -i "s/INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${INTERNAL_API_KEY}/" .env; then
+    
+    awk -v key="$INTERNAL_API_KEY" '/^INTERNAL_API_KEY=/ {print "INTERNAL_API_KEY=" key; next} {print}' .env > .env.tmp && mv .env.tmp .env
+    if [ $? -ne 0 ]; then
         echo "❌ Failed to update INTERNAL_API_KEY in .env"
+        mv .env.bak .env
         exit 1
     fi
+    
+    rm -f .env.bak
     
     # Generate secure database password
     DB_PASSWORD=$(openssl rand -hex 16)
@@ -186,8 +205,8 @@ echo "   -------------------------"
 echo "   Will be configured after initial deployment"
 echo ""
 echo "3️⃣  DNS Configuration:"
-# Get IP address with error handling
-SERVER_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || echo "your-server-ip")
+# Get IP address with error handling and local fallback
+SERVER_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || hostname -I | awk '{print $1}' || echo "your-server-ip")
 echo "   - Point ${DOMAIN} to: ${SERVER_IP}"
 echo "   - If using Cloudflare, enable proxy (orange cloud)"
 echo ""
@@ -242,3 +261,14 @@ echo ""
 echo "Note: Run the migration command after starting services to set up the database."
 echo ""
 echo "🌐 Once deployed: https://${DOMAIN}"
+echo ""
+echo "🔍 After deployment, verify with:"
+echo "===================================="
+echo "# Check health endpoint:"
+echo "curl -f https://api.${DOMAIN}/health || echo '⚠️ API health check failed'"
+echo ""
+echo "# Check frontend:"
+echo "curl -f -I https://${DOMAIN} || echo '⚠️ Frontend check failed'"
+echo ""
+echo "# Check all services status:"
+echo "docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps"
