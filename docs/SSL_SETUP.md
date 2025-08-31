@@ -37,7 +37,7 @@ sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem ./nginx/ssl/
 sudo chown $(whoami):$(whoami) ./nginx/ssl/*
 ```
 
-4. **Update nginx configuration** (`nginx/nginx.conf`):
+4. **Update nginx configuration** (`nginx/nginx.conf.template`):
 ```nginx
 server {
     listen 443 ssl http2;

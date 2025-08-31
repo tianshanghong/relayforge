@@ -69,7 +69,7 @@ http {
     # Redirect HTTP to HTTPS
     server {
         listen 80;
-        server_name relayforge.xyz www.relayforge.xyz api.relayforge.xyz;
+        server_name ${DOMAIN_NAME} www.${DOMAIN_NAME} api.${DOMAIN_NAME};
         return 301 https://$server_name$request_uri;
     }
 
@@ -77,7 +77,7 @@ http {
     server {
         listen 443 ssl;
         http2 on;
-        server_name relayforge.xyz www.relayforge.xyz;
+        server_name ${DOMAIN_NAME} www.${DOMAIN_NAME};
 
         ssl_certificate /etc/nginx/ssl/cloudflare-origin.pem;
         ssl_certificate_key /etc/nginx/ssl/cloudflare-origin-key.pem;
@@ -88,6 +88,11 @@ http {
         ssl_prefer_server_ciphers on;
         ssl_session_cache shared:SSL:10m;
         ssl_session_timeout 10m;
+        
+        # SSL Stapling for better performance
+        ssl_stapling on;
+        ssl_stapling_verify on;
+        ssl_trusted_certificate /etc/nginx/ssl/cloudflare-origin.pem;
 
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
@@ -109,7 +114,7 @@ http {
     server {
         listen 443 ssl;
         http2 on;
-        server_name api.relayforge.xyz;
+        server_name api.${DOMAIN_NAME};
 
         ssl_certificate /etc/nginx/ssl/cloudflare-origin.pem;
         ssl_certificate_key /etc/nginx/ssl/cloudflare-origin-key.pem;
