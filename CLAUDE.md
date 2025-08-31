@@ -15,25 +15,36 @@ Hosted MCP server platform that provides access to multiple services through a s
 
 ## Deployment
 
-### Docker (Recommended)
+### Unified Docker Compose (Staging & Production)
 ```bash
-# Development/Production - same approach
-docker-compose -f docker-compose.dev.yml up --build
+# STAGING - Build from source
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# PRODUCTION - Use pre-built images from ghcr.io
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Database migrations (both environments)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate up db-migrate
 
 # Stop services
-docker-compose -f docker-compose.dev.yml down
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 # Reset everything (including database)
-docker-compose -f docker-compose.dev.yml down -v
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v
 ```
 
 ### Local Development (Optional)
 ```bash
 # For hot-reload development
-docker-compose -f docker-compose.local.yml up -d  # Just database
+docker-compose up -d  # Uses docker-compose.override.yml automatically
 pnpm install
 pnpm dev
 ```
+
+### Current Deployments
+- **Production**: https://relayforge.xyz
+- **Staging**: https://relayforge.dev ✅ Successfully deployed!
 
 ## Architecture Overview
 
@@ -471,19 +482,21 @@ class MCPGateway {
 - OAuth token refresh with automatic retry
 - WebSocket support
 - Google Calendar MCP server (full CRUD operations)
-- Coinbase MCP server with CDP JWT authentication (PR #73)
+- Coinbase MCP server with CDP JWT authentication
 - Service discovery API (/services)
 - Usage tracking and billing (with method-level tracking)
 - Real-time credit display in error messages
 - Comprehensive test coverage for billing flows
-- Environment variable documentation and setup (PR #46)
-- Token management UI (PR #49)
-- ESM module support with proper .js extensions (PR #56)
+- Environment variable documentation and setup
+- Token management UI
+- ESM module support with proper .js extensions
 - Production deployment with Cloudflare SSL (Full mode)
 - Docker multi-stage builds for optimized images
-- Consolidated API endpoints under api.relayforge.xyz
+- Consolidated API endpoints under api subdomain
 - Health checks using Node.js instead of wget
-- Complete Docker Compose setup for all environments
+- Unified Docker Compose for staging/production
+- Staging deployment at relayforge.dev
+- Automated VPS setup script with domain configuration
 
 ### 🚧 In Progress (Phase 2)
 - Additional OAuth providers (GitHub, Slack)
