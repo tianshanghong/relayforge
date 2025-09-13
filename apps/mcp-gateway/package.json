@@ -23,7 +23,7 @@
     "@relayforge/shared": "workspace:*",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/moment-timezone": "^0.5.30",
-    "axios": "^1.11.0",
+    "axios": "^1.12.0",
     "dotenv": "^16.3.1",
     "fastify": "^4.24.0",
     "googleapis": "^126.0.0",
